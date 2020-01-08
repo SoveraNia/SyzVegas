@@ -1,0 +1,2 @@
+bad-field-size: loop_info.lo_device: syz=4 kernel=2 [386]
+bad-field-size: loop_info.lo_rdevice: syz=4 kernel=2 [386]

@@ -1,0 +1,4 @@
+no-such-struct: mptcp_mp_join_option
+no-such-struct: mptcp_syn_option
+no-such-struct: mptcp_synack_option
+no-such-struct: mptcp_mp_fclose_option

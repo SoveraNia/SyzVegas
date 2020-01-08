@@ -1,0 +1,2 @@
+no-such-struct: tipc_genlmsghdr_t
+no-such-struct: tipc_tlv_desc

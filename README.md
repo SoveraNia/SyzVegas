@@ -1,2 +1,1 @@
-# Syzkaller-MAB-SS
-Syzkaller with MAB scheduling and seed selection
+Syzkaller with MAB scheduling and seed selection.

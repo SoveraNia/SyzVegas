@@ -1,0 +1,16 @@
+no-such-struct: v4l2_format_fmt
+no-such-struct: v4l2_buffer_union
+no-such-struct: v4l2_plane_union
+no-such-struct: v4l2_framebuffer_union
+no-such-struct: v4l2_streamparm_union
+no-such-struct: v4l2_querymenu_union
+no-such-struct: v4l2_ext_u
+no-such-struct: v4l2_frmsizeenum_union
+no-such-struct: v4l2_frmivalenum_union
+no-such-struct: v4l2_dbg_match_union
+no-such-struct: v4l2_dv_timings_union
+no-such-struct: v4l2_event_union
+no-such-struct: v4l2_event_ctrl_union
+no-such-struct: v4l2_decoder_cmd_u
+no-such-struct: v4l2_decoder_cmd_start
+no-such-struct: v4l2_dv_timings_cap_u
