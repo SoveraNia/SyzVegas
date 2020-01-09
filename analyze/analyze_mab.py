@@ -49,7 +49,7 @@ def __processTest(test):
         line = line.strip('\n').strip();
         if len(line) == 0:
             continue;
-        if line[:2] == '- ' and "executing program" in line: # Prog/Syscall count
+        if line[:2] == '- ' and "executeRaw" in line: # Prog/Syscall count
             tmp = line.split();
             try:
                 n_calls = int(tmp[-1])

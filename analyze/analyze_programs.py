@@ -88,7 +88,7 @@ def __processTest(test):
                 ts_bgn = ts_cur
             count["Time_Elapsed"] = (ts_cur - ts_bgn) / 1000000000.0 / 60.0
             ret.append(copy.deepcopy(count))
-        elif line[:2] == '- ' and 'executing program' in line:
+        elif line[:2] == '- ' and 'executeRaw' in line:
             # print(status)
             pgsz = int(line.split()[-1])
             if not p_current is None:

@@ -132,6 +132,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+	fmt.Fprintf(os.Stdout, "<<<%v>>>\n", time.Now().UnixNano())
 	RunManager(cfg, target, sysTarget, syscalls)
 }
 
@@ -218,6 +219,7 @@ func RunManager(cfg *mgrconfig.Config, target *prog.Target, sysTarget *targets.T
 			numReproducing := atomic.LoadUint32(&mgr.numReproducing)
 			numFuzzing := atomic.LoadUint32(&mgr.numFuzzing)
 
+			fmt.Fprintf(os.Stdout, "<<<%v>>>\n", time.Now().UnixNano())
 			log.Logf(0, "VMs %v, executed %v, cover %v, crashes %v, repro %v",
 				numFuzzing, executed, signal, crashes, numReproducing)
 		}

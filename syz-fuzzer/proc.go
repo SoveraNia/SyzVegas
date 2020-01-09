@@ -765,6 +765,7 @@ func (proc *Proc) executeRaw(opts *ipc.ExecOpts, p *prog.Prog, stat Stat) (*ipc.
 
 	proc.logProgram(opts, p)
 	for try := 0; ; try++ {
+		proc.fuzzer.writeLog("- executeRaw %v\n", len(p.Calls))
 		atomic.AddUint64(&proc.fuzzer.stats[stat], 1)
 		output, info, hanged, err := proc.env.Exec(opts, p)
 		if err != nil {

@@ -111,7 +111,7 @@ def __processTest(test):
                 coverageTotal.add(pc);
             elif (pc & 0xffffffff00000000) == 0:
                 coverageTotal.add(pc);
-        elif line[:2] == "- " and "executing program" in line:
+        elif line[:2] == "- " and "executeRaw" in line:
             executeCount += 1;
             status = copy.deepcopy(status_cur);
             status["executeCount"] = executeCount;

@@ -116,7 +116,7 @@ def __processTest(test):
             exec_count = 0
             syscall_count = 0
             prev_ts = cur_status["Time_Elapsed"]
-        elif line[0] == '-' and 'executing program' in line:
+        elif line[0] == '-' and 'executeRaw' in line:
             exec_count += 1;
             try:
                 sz = int(line.split()[-1])

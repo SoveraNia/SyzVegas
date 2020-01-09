@@ -45,7 +45,7 @@ def __processTestAltAlt(test):
         line = line.strip('\n').strip();
         if len(line) == 0:
             continue;
-        if line[:2] == '- ' and "executing program" in line:
+        if line[:2] == '- ' and "executeRaw" in line:
             tmp = line.split();
             try:
                 n_calls = int(tmp[-1])

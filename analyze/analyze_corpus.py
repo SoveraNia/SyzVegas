@@ -31,7 +31,7 @@ def __processTest(test):
                 t_bgn = ts;
             ts = ts - t_bgn
             t_max = max(t_max, ts)
-        elif line[0] == '-' and 'executing program' in line:
+        elif line[0] == '-' and 'executeRaw' in line:
             count += 1;
         elif "addInputToCorpus" in line:
             corpusCount += 1;
