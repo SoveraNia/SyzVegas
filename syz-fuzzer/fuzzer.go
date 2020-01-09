@@ -797,9 +797,9 @@ func (fuzzer *FuzzerSnapshot) chooseProgram(r *rand.Rand) (int, *prog.Prog) {
 }
 
 func (fuzzer *Fuzzer) addInputToCorpus(p *prog.Prog, sign signal.Signal, sig hash.Sig) int {
-	pidx := -1
+	pidx := -1 // If duplicate seed, do not set pidx
 	fuzzer.corpusMu.Lock()
-	pidx, ok := fuzzer.corpusHashes[sig]
+	_, ok := fuzzer.corpusHashes[sig]
 	if !ok {
 		prio := float64(len(sign))
 		if sign.Empty() {
