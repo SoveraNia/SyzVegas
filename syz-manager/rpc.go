@@ -1,6 +1,8 @@
 // Copyright 2018 syzkaller project authors. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 
+// MODIFIED: Daimeng Wang
+
 package main
 
 import (
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/syzkaller/pkg/cover"
+	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/log"
 	"github.com/google/syzkaller/pkg/rpctype"
 	"github.com/google/syzkaller/pkg/signal"
@@ -34,6 +37,19 @@ type RPCServer struct {
 	corpusCover  cover.Cover
 	rotator      *prog.Rotator
 	rnd          *rand.Rand
+
+	triageWorks map[hash.Sig]map[int]rpctype.RPCTriage
+
+	MABRound      int
+	MABExp31Round int
+	MABGLC        rpctype.MABGLC
+
+	MABTriageCount      int
+	MABTriageCostBefore float64
+	MABTriageCostAfter  float64
+
+	CorpusGLC  map[hash.Sig]rpctype.CorpusGLC
+	TriageInfo map[hash.Sig]*rpctype.TriageInfo
 }
 
 type Fuzzer struct {
@@ -41,6 +57,7 @@ type Fuzzer struct {
 	inputs        []rpctype.RPCInput
 	newMaxSignal  signal.Signal
 	rotatedSignal signal.Signal
+	triages       []rpctype.RPCTriage
 }
 
 type BugFrames struct {
@@ -66,6 +83,11 @@ func startRPCServer(mgr *Manager) (int, error) {
 		sandbox:         mgr.cfg.Sandbox,
 		fuzzers:         make(map[string]*Fuzzer),
 		rnd:             rand.New(rand.NewSource(time.Now().UnixNano())),
+		MABRound:        0,
+		MABGLC:          rpctype.MABGLC{},
+		CorpusGLC:       make(map[hash.Sig]rpctype.CorpusGLC),
+		triageWorks:     make(map[hash.Sig]map[int]rpctype.RPCTriage),
+		TriageInfo:      make(map[hash.Sig]*rpctype.TriageInfo),
 	}
 	serv.batchSize = 5
 	if serv.batchSize < mgr.cfg.Procs {
@@ -207,6 +229,61 @@ func (serv *RPCServer) Check(a *rpctype.CheckArgs, r *int) error {
 	return nil
 }
 
+func (serv *RPCServer) SyncMABStatus(a *rpctype.RPCMABStatus, r *rpctype.RPCMABStatus) error {
+	if a.Round > serv.MABRound {
+		serv.MABRound = a.Round
+		serv.MABExp31Round = a.Exp31Round
+		// serv.MABMaxGain = a.MaxGain
+		// serv.MABMinGain = a.MinGain
+		// serv.MABMaxLoss = a.MaxLoss
+		// serv.MABMinLoss = a.MinLoss
+		// serv.MABMaxCost = a.MaxCost
+		// serv.MABMinCost = a.MinCost
+		serv.MABGLC = a.MABGLC
+		// serv.MABWindowGain = append([]float64(nil), a.WindowGain...)
+		// serv.MABWindowLoss = append([]float64(nil), a.WindowLoss...)
+		// serv.MABWindowCost = append([]float64(nil), a.WindowCost...)
+		for sig, v := range a.CorpusGLC {
+			serv.CorpusGLC[sig] = v
+			log.Logf(4, "- MAB Corpus Sync %v: %+v\n", sig.String(), v)
+		}
+		for sig, v := range a.TriageInfo {
+			if v.TriageCount >= v.TriageTotal {
+				delete(serv.TriageInfo, sig)
+				log.Logf(4, "Deleting completed triage %v", sig.String())
+			} else {
+				serv.TriageInfo[sig] = &rpctype.TriageInfo{
+					Source:           v.Source,
+					SourceCost:       v.SourceCost,
+					TriageGain:       v.TriageGain,
+					VerifyGain:       v.VerifyGain,
+					VerifyCost:       v.VerifyCost,
+					MinimizeGain:     v.MinimizeGain,
+					MinimizeCost:     v.MinimizeCost,
+					MinimizeTimeSave: v.MinimizeTimeSave,
+					TriageCount:      v.TriageCount,
+					TriageTotal:      v.TriageTotal,
+					TriageGainNorm:   v.TriageGainNorm,
+					SourceGainNorm:   v.SourceGainNorm,
+				}
+			}
+		}
+	} else if a.Round < serv.MABRound {
+		r.Round = serv.MABRound
+		r.Exp31Round = serv.MABExp31Round
+		r.MABGLC = serv.MABGLC
+		r.CorpusGLC = make(map[hash.Sig]rpctype.CorpusGLC)
+		for sig, v := range serv.CorpusGLC {
+			r.CorpusGLC[sig] = v
+		}
+		r.TriageInfo = make(map[hash.Sig]*rpctype.TriageInfo)
+		for sig, v := range serv.TriageInfo {
+			r.TriageInfo[sig] = v
+		}
+	}
+	return nil
+}
+
 func (serv *RPCServer) NewInput(a *rpctype.NewInputArgs, r *int) error {
 	inputSignal := a.Signal.Deserialize()
 	log.Logf(4, "new input from %v for syscall %v (signal=%v, cover=%v)",
@@ -229,6 +306,10 @@ func (serv *RPCServer) NewInput(a *rpctype.NewInputArgs, r *int) error {
 		return nil
 	}
 	serv.mgr.newInput(a.RPCInput, inputSignal)
+
+	// Update corpus GLC
+	sig := hash.Hash(a.RPCInput.Prog)
+	serv.CorpusGLC[sig] = a.RPCInput.CorpusGLC
 
 	if f.rotatedSignal != nil {
 		f.rotatedSignal.Merge(inputSignal)
@@ -292,6 +373,19 @@ func (serv *RPCServer) Poll(a *rpctype.PollArgs, r *rpctype.PollRes) error {
 		for i := 0; i < batchSize && len(f.inputs) > 0; i++ {
 			last := len(f.inputs) - 1
 			r.NewInputs = append(r.NewInputs, f.inputs[last])
+
+			// Send MAB status as well
+			sig := hash.Hash(f.inputs[last].Prog)
+			if r.CorpusGLC == nil {
+				log.Logf(0, "- WTF. nil map detected. Creating.\n")
+				r.CorpusGLC = make(map[hash.Sig]rpctype.CorpusGLC)
+			}
+			if v, ok := serv.CorpusGLC[sig]; ok {
+				r.CorpusGLC[sig] = v
+				r.NewInputs[len(r.NewInputs)-1].CorpusGLC = v
+				log.Logf(4, "- Sending corpus GLC %v: %+v.\n", sig.String(), r.CorpusGLC[sig])
+			}
+
 			f.inputs[last] = rpctype.RPCInput{}
 			f.inputs = f.inputs[:last]
 		}
@@ -299,7 +393,60 @@ func (serv *RPCServer) Poll(a *rpctype.PollArgs, r *rpctype.PollRes) error {
 			f.inputs = nil
 		}
 	}
-	log.Logf(4, "poll from %v: candidates=%v inputs=%v maxsignal=%v",
-		a.Name, len(r.Candidates), len(r.NewInputs), len(r.MaxSignal.Elems))
+	// Receive incompleted triages
+	for _, v := range a.TriagesUnfinished {
+		if _, ok := serv.triageWorks[v.Sig]; !ok {
+			serv.triageWorks[v.Sig] = make(map[int]rpctype.RPCTriage)
+		}
+		if _, ok := serv.triageWorks[v.Sig][v.CallIndex]; ok {
+			log.Logf(4, "WTF Duplicate Triage: Prog=%v, Index=%v, #Sig=%v", v.Sig.String(), v.CallIndex, len(v.Info.Signal))
+			return nil
+		}
+		serv.triageWorks[v.Sig][v.CallIndex] = v
+		f.triages = append(f.triages, v)
+		log.Logf(4, "Fuzzer %v New Triage: Prog=%v, Index=%v, #Sig=%v", a.Name, v.Sig.String(), v.CallIndex, len(v.Info.Signal))
+	}
+	// Receive completed triages
+	for sig, v := range a.Triages {
+		if _, ok := serv.triageWorks[sig]; ok && v == 1 {
+			delete(serv.triageWorks, sig)
+			log.Logf(4, "Triage Complete: Prog=%v", sig.String())
+		}
+	}
+	// Receive completed smashes
+	for _, sig := range a.SmashesFinished {
+		if _, ok := serv.CorpusGLC[sig]; ok && !serv.CorpusGLC[sig].Smashed {
+			tmp := serv.CorpusGLC[sig]
+			tmp.Smashed = true
+			serv.CorpusGLC[sig] = tmp
+			log.Logf(4, "Smash Complete: Prog=%v", sig.String())
+		}
+	}
+	// Check what triages needs to be synced
+	triageCount := 0
+	if a.NeedTriages {
+		for sig, _ := range serv.triageWorks {
+			for cidx, _ := range serv.triageWorks[sig] {
+				insert := false
+				if _, ok := a.Triages[sig]; !ok {
+					insert = true
+				}
+				if insert && triageCount <= serv.batchSize {
+					r.Triages = append(r.Triages, serv.triageWorks[sig][cidx])
+					triageCount += 1
+					if triageCount > serv.batchSize {
+						break
+					}
+				}
+			}
+			if triageCount > serv.batchSize {
+				break
+			}
+		}
+	}
+	// Sync MAB
+	serv.SyncMABStatus(&a.RPCMABStatus, &r.RPCMABStatus)
+	log.Logf(4, "poll from %v: candidates=%v inputs=%v triages=%v maxsignal=%v",
+		a.Name, len(r.Candidates), len(r.NewInputs), len(r.Triages), len(r.MaxSignal.Elems))
 	return nil
 }

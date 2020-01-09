@@ -105,6 +105,9 @@ type Config struct {
 	// Parameters for concrete types are in Config type in vm/TYPE/TYPE.go, e.g. vm/qemu/qemu.go.
 	VM json.RawMessage `json:"vm"`
 
+	Feedback     string          `json:"feedback"`
+	FuzzerConfig json.RawMessage `json:"fuzzer_config"`
+
 	// Implementation details beyond this point.
 	// Parsed Target:
 	TargetOS     string `json:"-"`

@@ -17,6 +17,7 @@ func Minimize(p0 *Prog, callIndex0 int, crash bool, pred0 func(*Prog, int) bool)
 			p.Target.SanitizeCall(call)
 		}
 		p.debugValidate()
+		p.Source = 2
 		return pred0(p, callIndex)
 	}
 	name0 := ""

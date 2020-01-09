@@ -1,6 +1,8 @@
 // Copyright 2015 syzkaller project authors. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 
+// MODIFIED: Daimeng Wang
+
 package qemu
 
 import (
@@ -404,9 +406,9 @@ func (inst *instance) boot() error {
 
 	// Start output merger.
 	var tee io.Writer
-	if inst.debug {
-		tee = os.Stdout
-	}
+	// if inst.debug { // Output log even with debug
+	tee = os.Stdout
+	// }
 	inst.merger = vmimpl.NewOutputMerger(tee)
 	inst.merger.Add("qemu", inst.rpipe)
 	inst.rpipe = nil

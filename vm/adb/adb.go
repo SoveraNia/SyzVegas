@@ -3,6 +3,8 @@
 
 // +build !ppc64le
 
+// MODIGIED: Daimeng
+
 package adb
 
 import (
@@ -108,11 +110,35 @@ func (pool *Pool) Create(workdir string, index int) (vmimpl.Instance, error) {
 			return nil, err
 		}
 	}
+
+	time.Sleep(120 * time.Second)
+	log.Logf(0, "WTF 0")
+	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c rm -Rf /data/local/tmp/syzkaller*")
+	if _, err := inst.adb("shell", "su -c", "rm -Rf /data/local/tmp/syzkaller*"); err != nil {
+		return nil, err
+	}
+	log.Logf(0, "WTF 1")
+	inst.adb("shell", "su -c", "'chmod a+r /sys/kernel/debug/kcov'")
+	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c '/data/local/tmp/setup_syzkaller.sh'")
+	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'chmod a+r /sys/kernel/debug/kcov'");
+	log.Logf(0, "WTF 2")
+	inst.adb("shell", "su -c", "setenforce 0")
+	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'setenforce 0'")
+	log.Logf(0, "WTF 3")
+	inst.adb("shell", "su -c", "'echo 0 > /proc/sys/kernel/kptr_restrict'")
+	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'echo 0 > /proc/sys/kernel/kptr_restrict'")
+	log.Logf(0, "WTF 4")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu3/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu2/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu1/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu0/online'")
+	log.Logf(0, "WTF 5")
+
 	// Remove temp files from previous runs.
 	if _, err := inst.adb("shell", "rm -Rf /data/syzkaller*"); err != nil {
 		return nil, err
 	}
-	inst.adb("shell", "echo 0 > /proc/sys/kernel/kptr_restrict")
+	inst.adb("shell", "su -c", "echo 0 > /proc/sys/kernel/kptr_restrict")
 	closeInst = nil
 	return inst, nil
 }
@@ -394,9 +420,9 @@ func (inst *instance) Run(timeout time.Duration, stop <-chan bool, command strin
 	adbWpipe.Close()
 
 	var tee io.Writer
-	if inst.debug {
-		tee = os.Stdout
-	}
+	// if inst.debug { // Output anyway
+	tee = os.Stdout
+	// }
 	merger := vmimpl.NewOutputMerger(tee)
 	merger.Add("console", tty)
 	merger.Add("adb", adbRpipe)

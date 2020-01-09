@@ -9,8 +9,24 @@ import (
 
 func (p *Prog) Clone() *Prog {
 	p1 := &Prog{
-		Target: p.Target,
-		Calls:  make([]*Call, len(p.Calls)),
+		Target:                p.Target,
+		Calls:                 make([]*Call, len(p.Calls)),
+		Source:                p.Source,
+		PrioBase:              p.PrioBase,
+		Smashed:               p.Smashed,
+		MABCost:               p.MABCost,
+		MABMutateCount:        p.MABMutateCount,
+		MABVerifyGain:         p.MABVerifyGain,
+		MABVerifyCost:         p.MABVerifyCost,
+		MABMinimizeGain:       p.MABMinimizeGain,
+		MABMinimizeCost:       p.MABMinimizeCost,
+		MABMinimizeTimeSave:   p.MABMinimizeTimeSave,
+		MABMutateGain:         p.MABMutateGain,
+		MABMutateCost:         p.MABMutateCost,
+		MABCostBeforeMinimize: p.MABCostBeforeMinimize,
+		MABMutateGainNorm:     p.MABMutateGainNorm,
+		MABMutateGainNormOrig: p.MABMutateGainNormOrig,
+		MABTriageGainNorm:     p.MABTriageGainNorm,
 	}
 	newargs := make(map[*ResultArg]*ResultArg)
 	for ci, c := range p.Calls {

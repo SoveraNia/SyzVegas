@@ -12,6 +12,7 @@ import (
 func (target *Target) Generate(rs rand.Source, ncalls int, ct *ChoiceTable) *Prog {
 	p := &Prog{
 		Target: target,
+		Source: 0,
 	}
 	r := newRand(target, rs)
 	s := newState(target, ct, nil)

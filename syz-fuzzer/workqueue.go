@@ -1,11 +1,14 @@
 // Copyright 2017 syzkaller project authors. All rights reserved.
 // Use of this source code is governed by Apache 2 LICENSE that can be found in the LICENSE file.
 
+// MODIFIED: Daimeng Wang
+
 package main
 
 import (
 	"sync"
 
+	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/ipc"
 	"github.com/google/syzkaller/prog"
 )
@@ -20,6 +23,8 @@ type WorkQueue struct {
 	candidate       []*WorkCandidate
 	triage          []*WorkTriage
 	smash           []*WorkSmash
+
+	fuzzer *Fuzzer
 
 	procs          int
 	needCandidates chan struct{}
@@ -57,8 +62,9 @@ type WorkCandidate struct {
 // During smashing these programs receive a one-time special attention
 // (emit faults, collect comparison hints, etc).
 type WorkSmash struct {
-	p    *prog.Prog
-	call int
+	p     *prog.Prog
+	call  int
+	count int
 }
 
 func newWorkQueue(procs int, needCandidates chan struct{}) *WorkQueue {
@@ -85,6 +91,71 @@ func (wq *WorkQueue) enqueue(item interface{}) {
 	default:
 		panic("unknown work type")
 	}
+}
+
+func (wq *WorkQueue) dequeueType(t int, reverse bool, lock bool) (item interface{}) {
+	// 0 = candidate, 1 = smash, 2 = triage
+	// reverse = true -> LIFO
+	// Note: this should be done when lock is obtained
+	// ts0 := time.Now().UnixNano()
+	if lock {
+		wq.mu.Lock()
+		defer wq.mu.Unlock()
+	}
+	item = nil
+	switch t {
+	case 0:
+		{
+			if len(wq.candidate) != 0 {
+				if reverse {
+					last := len(wq.candidate) - 1
+					item = wq.candidate[last]
+					wq.candidate = wq.candidate[:last]
+				} else {
+					item = wq.candidate[0]
+					wq.candidate = wq.candidate[1:]
+				}
+			}
+		}
+	case 1:
+		{
+			if len(wq.smash) != 0 {
+				if reverse {
+					last := len(wq.smash) - 1
+					item = wq.smash[last]
+					wq.smash = wq.smash[:last]
+				} else {
+					item = wq.smash[0]
+					wq.smash = wq.smash[1:]
+				}
+			}
+		}
+	case 2:
+		{
+			if len(wq.triageCandidate) != 0 {
+				if reverse {
+					last := len(wq.triageCandidate) - 1
+					item = wq.triageCandidate[last]
+					wq.triageCandidate = wq.triageCandidate[:last]
+				} else {
+					item = wq.triageCandidate[0]
+					wq.triageCandidate = wq.triageCandidate[1:]
+				}
+			} else if len(wq.triage) != 0 {
+				if reverse {
+					last := len(wq.triage) - 1
+					item = wq.triage[last]
+					wq.triage = wq.triage[:last]
+				} else {
+					item = wq.triage[0]
+					wq.triage = wq.triage[1:]
+				}
+			}
+		}
+	}
+	// ts1 := time.Now().UnixNano()
+	// wq.fuzzer.writeLog("- MAB Dequeue: %v\n", ts1-ts0)
+	return item
 }
 
 func (wq *WorkQueue) dequeue() (item interface{}) {
@@ -128,4 +199,20 @@ func (wq *WorkQueue) wantCandidates() bool {
 	wq.mu.RLock()
 	defer wq.mu.RUnlock()
 	return len(wq.candidate) < wq.procs
+}
+
+func (wq *WorkQueue) wantTriages() bool {
+	wq.mu.RLock()
+	defer wq.mu.RUnlock()
+	return (len(wq.triage) + len(wq.triageCandidate)) < wq.procs
+}
+
+func (wq *WorkQueue) findTriageProg(sig hash.Sig) *prog.Prog {
+	for _, item := range wq.triage {
+		_sig := hash.Hash(item.p.Serialize())
+		if sig == _sig {
+			return item.p
+		}
+	}
+	return nil
 }

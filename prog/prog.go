@@ -11,6 +11,24 @@ type Prog struct {
 	Target   *Target
 	Calls    []*Call
 	Comments []string
+
+	Source  int // Gen: 0, Mut: 1, Tri: 2
+	Smashed bool
+
+	MABMutateCount        int
+	PrioBase              float64
+	MABVerifyGain         float64
+	MABVerifyCost         float64 // The stablization cost of producing the program
+	MABMinimizeGain       float64
+	MABMinimizeCost       float64 // The minimization cost of producing the program
+	MABMinimizeTimeSave   float64 // Time saved due to minimization
+	MABMutateGain         float64 // Total raw gain of mutating this program
+	MABMutateCost         float64 // Total raw cost of mutatin this program
+	MABCost               float64 // Cost of executing this program
+	MABCostBeforeMinimize float64 // Cost of the original program before minimization
+	MABMutateGainNorm     float64 // Normalized gain after Naels' algorithm, shared with Triage
+	MABMutateGainNormOrig float64 // Normalized gain after Naels' algorithm, without sharing with Triage
+	MABTriageGainNorm     float64 // Normalized gain after Naels' algorithm
 }
 
 type Call struct {
@@ -386,4 +404,20 @@ func (p *Prog) removeCall(idx int) {
 	}
 	copy(p.Calls[idx:], p.Calls[idx+1:])
 	p.Calls = p.Calls[:len(p.Calls)-1]
+}
+
+func (p *Prog) ResetMAB() {
+	p.MABMutateCount = 0
+	p.PrioBase = 0.0
+	p.MABVerifyGain = 0.0
+	p.MABVerifyCost = 0.0
+	p.MABMinimizeGain = 0.0
+	p.MABMinimizeCost = 0.0
+	p.MABMinimizeTimeSave = 0.0
+	p.MABMutateGain = 0.0
+	p.MABMutateCost = 0.0
+	p.MABCostBeforeMinimize = 0.0
+	p.MABMutateGainNorm = 0.0
+	p.MABMutateGainNormOrig = 0.0
+	p.MABTriageGainNorm = 0.0
 }

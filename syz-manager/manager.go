@@ -552,9 +552,13 @@ func (mgr *Manager) runInstance(index int) (*Crash, error) {
 	start := time.Now()
 	atomic.AddUint32(&mgr.numFuzzing, 1)
 	defer atomic.AddUint32(&mgr.numFuzzing, ^uint32(0))
+	fuzzerConfig := make(map[string]interface{})
+	if err := json.Unmarshal(mgr.cfg.FuzzerConfig, &fuzzerConfig); err != nil {
+		fmt.Printf("failed to parse fuzzer config. Using default.\n%v", err)
+	}
 	cmd := instance.FuzzerCmd(fuzzerBin, executorCmd, fmt.Sprintf("vm-%v", index),
 		mgr.cfg.TargetOS, mgr.cfg.TargetArch, fwdAddr, mgr.cfg.Sandbox, procs, fuzzerV,
-		mgr.cfg.Cover, *flagDebug, false, false)
+		mgr.cfg.Cover, *flagDebug, false, false, mgr.cfg.Feedback, fuzzerConfig)
 	outc, errc, err := inst.Run(time.Hour, mgr.vmStop, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run fuzzer: %v", err)
