@@ -799,7 +799,8 @@ func (fuzzer *FuzzerSnapshot) chooseProgram(r *rand.Rand) (int, *prog.Prog) {
 func (fuzzer *Fuzzer) addInputToCorpus(p *prog.Prog, sign signal.Signal, sig hash.Sig) int {
 	pidx := -1
 	fuzzer.corpusMu.Lock()
-	pidx, ok := fuzzer.corpusHashes[sig]; !ok {
+	pidx, ok := fuzzer.corpusHashes[sig]
+	if !ok {
 		prio := float64(len(sign))
 		if sign.Empty() {
 			prio = 1.0

@@ -86,7 +86,13 @@ def setEnv():
         exit(1)
     if os.path.exists("/usr/bin/clang-format"):
         os.environ["CLANGFORMAT"] = "/usr/bin/clang-format"
+        os.environ["PATH"] = "/usr/bin:" + os.environ["PATH"]
     elif os.path.exists("/usr/bin/clang-format-7"):
         os.environ["CLANGFORMAT"] = "/usr/bin/clang-format-7"
     elif os.path.exists("/home/dwang030/clang+llvm/bin/clang-format"):
         os.environ["CLANGFORMAT"] = "/home/dwang030/clang+llvm/bin/clang-format"
+        os.environ["PATH"] = "/home/dwang030/clang+llvm/bin:" + os.environ["PATH"]
+    elif os.path.exists("/extra/dwang030/clang+llvm/bin/clang-format"):
+        os.environ["CLANGFORMAT"] = "/extra/dwang030/clang+llvm/bin/clang-format"
+        os.environ["PATH"] = "/extra/dwang030/clang+llvm/bin:" + os.environ["PATH"]
+
