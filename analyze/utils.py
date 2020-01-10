@@ -44,7 +44,7 @@ def getTestParams(test_name):
     name = "_".join(name)
     return name, module, run
 
-def averageData(data, key=0, value=[1], bin_size=100, median=True):
+def averageData(data, key=0, value=1, bin_size=100, median=True, bin_avg=False):
     ret = []
     num = len(data)
     cur_x = 0
@@ -55,31 +55,37 @@ def averageData(data, key=0, value=[1], bin_size=100, median=True):
         y = []
         end = 0
         for i in range(num):
+             b_avg = []
              while idx[i] < len(data[i]) and data[i][idx[i]][key] < cur_x:
+                  b_avg.append(data[i][idx[i]][value])
                   idx[i] += 1
              _idx = idx[i]
-             if _idx >= len(data[i]):
+             if idx[i] >= len(data[i]):
                  _idx = len(data[i]) - 1
                  end += 1
-             if _idx < len(data[i]):
-                 if type(value) == list:
-                     tmp = []
-                     for v in value:
-                         tmp.append(data[i][_idx][v])
-                     y.append(tmp)
-                 else:
-                     y.append(data[i][_idx][value])
+             #if _idx < len(data[i]):
+             #    if type(value) == list:
+             #        tmp = []
+             #        for v in value:
+             #            tmp.append(data[i][_idx][v])
+             #        y.append(tmp)
+             #    else:
+             if bin_avg and len(b_avg) > 0:
+                 y.append(np.median(b_avg))
+             else:
+                 y.append(data[i][_idx][value])
         if width < 0:
              width = len(y)
         if len(y) == 0 or len(y) < width:
              break;
         if not median:
-            ret.append((cur_x, np.average(y, axis=0)))
+            ret.append((cur_x, np.average(y)))
         else:
-            ret.append((cur_x, np.median(y, axis=0)))
+            ret.append((cur_x, np.median(y)))
         cur_x += bin_size
         if end == width:
             break
+    print(ret[-5:])
     return ret
 
 def __cliffsDelta(a, b):

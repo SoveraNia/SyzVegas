@@ -46,6 +46,10 @@ def __processTest(test):
     cur_normgain = 0.0
     cur_normloss = 0.0
     cur_normcost = 0.0
+    ts_cur = 0
+    prev_ts = 0
+    cur_ts = 0
+    TIME_THRESHOLD = 10.000
     for line in f:
         line = line.strip('\n').strip();
         if len(line) == 0:
@@ -65,13 +69,17 @@ def __processTest(test):
             if ts_bgn == 0:
                 ts_bgn = ts_cur
             status["ts"] = (ts_cur - ts_bgn) / 1000000000
+            cur_ts = status["ts"]
             ret.append(copy.deepcopy(status))
-        elif line[0] == '-' and ("MAB Dequeue: " in line or "MAB Update: " in line or "MAB Poll: " in line or "MAB Sync: " in line or "MAB NewTriage: " in line or "MAB CompleteTriage: " in line): # MAB Overhead
+        elif line[0] == '-' and ("MAB Dequeue: " in line or "MAB Update: " in line or "MAB Poll: " in line or "MAB Sync " in line or "MAB NewTriage: " in line or "MAB CompleteTriage: " in line): # MAB Overhead
+            TIME_THRESHOLD = cur_ts - prev_ts + 10.0 # Upper bound
             tmp = line.split(": ");
             try:
                 t = int(tmp[1]) / 1000000000
             except:
                 continue
+            t = t if t < TIME_THRESHOLD else TIME_THRESHOLD
+            t = 0 if t < 0 else t
             status["MABOverhead"] += t
             if "MAB Dequeue: " in line:
                 status["MABDequeue"] += t
@@ -79,8 +87,9 @@ def __processTest(test):
                 status["MABUpdate"] += t
             elif "MAB Poll: " in line:
                 status["MABPoll"] += t
-            elif "MAB Sync: " in line:
+            elif "MAB Sync: " in line or "MAB Sync Read: " in line or "MAB Sync Write: " in line:
                 status["MABSync"] += t
+            prev_ts = status["ts"]
         elif line[0] == '-' and "MABWeight " in line:
             tmp = line.split("MABWeight ")[1].split("], ")[0] + "]"
             try:
@@ -155,8 +164,15 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
         keys = ["MABOverhead", "MABSync", "MABDequeue", "MABPoll", "MABUpdate"]
         for k in keys:
             for name in data[module]:
-                tmp[name] = averageData(data[module][name], key="ts", value=k)
-            plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=k, outfile="mab_%s_%s.png" % (module, k), xunit=3600.0);
+                tmp[name] = averageData(data[module][name], key="ts", value=k, median=False)
+            plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=k, outfile="mab_%s_%s.png" % (module, k), xunit=3600.0, xstep=4);
+
+        # Per module overhead
+        for name in data[module]:
+            tmp = {"Sync": [], "Update": []}
+            tmp["Sync"] = averageData(data[module][name], key="ts", value="MABSync", median=False)
+            tmp["Update"] = averageData(data[module][name], key="ts", value="MABUpdate", median=False)
+            plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Overhead (min)", outfile="mab_%s_%s.png" % (module, name), xunit=3600.0, yunit=60.0, xstep=4);
 
         # MAB Prob
         mab_prob_tri = {}
@@ -186,11 +202,12 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
                 mab_prob["Mutate"].append(prob[1])
                 mab_prob["Triage"].append(prob[2])
                 mab_prob_tri[name].append(tri)
+                print(tri[-1])
                 mab_prob_mg[name].append(mg)
             for arm in mab_prob:
-                mab_prob[arm] = averageData(mab_prob[arm], key=0, value=1, bin_size=1800.0)
-            mab_prob_mg[name] = averageData(mab_prob_mg[name], key=0, value=1, bin_size=60.0)
-            mab_prob_tri[name] = averageData(mab_prob_tri[name], key=0, value=1, bin_size=60.0)
+                mab_prob[arm] = averageData(mab_prob[arm], key=0, value=1, bin_size=1800.0, bin_avg=True, median=False)
+            mab_prob_mg[name] = averageData(mab_prob_mg[name], key=0, value=1, bin_size=1800.0, bin_avg=False, median=False)
+            mab_prob_tri[name] = averageData(mab_prob_tri[name], key=0, value=1, bin_size=1800.0, bin_avg=False, median=False)
             plot(mab_prob, 0, 1, xlabel="Time elapsed (hr)", ylabel="log(Weight)", title="MAB Probability", outfile="mab_probability_%s.png" % name, xunit=3600.0, xstep=4);
         plot(mab_prob_tri, 0, 1, xlabel="Time elapsed (hr)", ylabel="Probability", title="", outfile="mab_probability_tri.png", xunit=3600.0, xstep=4);
         plot(mab_prob_mg,  0, 1, xlabel="Time elapsed (hr)", ylabel="log(Pr(Mutate) / Pr(Generate))", title="", outfile="mab_probability_mg.png", xunit=3600.0, xstep=4);
