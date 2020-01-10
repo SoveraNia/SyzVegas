@@ -57,12 +57,23 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
 
 def plotBar1(data, width=1, xlabel="", ylabel="", title="", outfile="out.png",
 xlogscale=False, ylogscale=False, xmax=None, ymax=None):
-    fig = plt.figure(figsize=(8,4))
+    fig = plt.figure(figsize=(8,5))
     ax = plt.subplot(111)
-    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.6, top=0.9, wspace=0, hspace=0)
-    ax.set_title(title);
-    ax.set_xlabel(xlabel);
-    ax.set_ylabel(ylabel);
+    total_test_len = 0
+    for test in data.keys():
+        total_test_len += len(test)
+    bbox_to_anchor = False
+    if len(data.keys()) > 4 or total_test_len > 40:
+        bbox_to_anchor = True
+    if bbox_to_anchor:
+        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
+    else:
+        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.9, wspace=0, hspace=0)
+    ax.set_title(title, fontsize=20);
+    ax.set_xlabel(xlabel, fontsize=16);
+    ax.set_ylabel(ylabel, fontsize=16);
+    ax.tick_params(labelsize=12);
+
     if not xmax is None:
         ax.set_xlim(0,xmax);
     if not ymax is None:
@@ -91,7 +102,10 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
     ax.grid();
     ax.set_xticks([(width * i + len(data.keys()) * bar_width / 2) for i in range(len(labels))])
     ax.set_xticklabels(labels)
-    ax.legend(bbox_to_anchor=(1.01, 1.0))
+    if bbox_to_anchor:
+        ax.legend(bbox_to_anchor=(1.01, 1.0),fontsize=12)
+    else:
+        ax.legend(loc=0,fontsize=12)
     plt.savefig(outfile);
     plt.savefig(outfile+'.pdf');
     plt.close('all');
@@ -135,9 +149,7 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
-    ax.set_title(title);
-    ax.set_xlabel(xlabel);
-    ax.set_ylabel(ylabel);
+    ax.tick_params(labelsize=12);
     if not xrange is None:
         ax.set_xlim(xrange[0],xrange[1]);
     if not raw:
