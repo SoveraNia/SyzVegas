@@ -20,7 +20,7 @@ linestyles = ["-",
      (0, (3, 1, 1, 1, 1, 1))]
 
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False):
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0):
     fig = plt.figure(figsize=(8,5))
     ax = plt.subplot(111)
     plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
@@ -41,8 +41,8 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False):
         label = test.replace('_', ' ')
         if len(data[test]) == 0:
             continue;
-        x = [v[key] for v in data[test]];
-        y = [v[value] for v in data[test]];
+        x = [v[key] / xunit for v in data[test]];
+        y = [v[value] / yunit for v in data[test]];
         if not scatter:
             ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))]);
         else:
@@ -93,10 +93,11 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
     ax.set_xticklabels(labels)
     ax.legend(bbox_to_anchor=(1.01, 1.0))
     plt.savefig(outfile);
+    plt.savefig(outfile+'.pdf');
     plt.close('all');
 
 def plotBar(data, key, value, width=1, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None):
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, xunit=1.0, yunit=1.0):
     fig = plt.figure(figsize=(7,4))
     ax = plt.subplot(111)
     plt.subplots_adjust(left=0.1, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
@@ -116,20 +117,24 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
     for test in sorted(data.keys()):
         if len(data[test]) == 0:
             continue;
-        x = [(v[key] + idx*bar_width)for v in data[test]];
-        y = [v[value] for v in data[test]];
-        ax.bar(x,y, width=bar_width, label=test, color=linecolors[idx%len(linecolors)], edgecolor=linecolors[idx%len(linecolors)]);
+        x = [(v[key] + idx*bar_width) / xunit for v in data[test]];
+        y = [v[value] / yunit for v in data[test]];
+        ax.bar(x,y, width=bar_width, label=test.replace('_', ' '), color=linecolors[idx%len(linecolors)], edgecolor=linecolors[idx%len(linecolors)]);
         idx += 1;
     ax.grid();
     ax.legend(bbox_to_anchor=(1.01, 1.0))
     plt.savefig(outfile);
+    plt.savefig(outfile+'.pdf');
     plt.close('all');
 
 def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfile="out.png", xrange=None,
         xlogscale=False, raw=False):
-    fig = plt.figure(figsize=(7,4))
+    fig = plt.figure(figsize=(8,5))
     ax = plt.subplot(111)
-    plt.subplots_adjust(left=0.1, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
+    plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+    ax.set_title(title, fontsize=20);
+    ax.set_xlabel(xlabel, fontsize=16);
+    ax.set_ylabel(ylabel, fontsize=16);
     ax.set_title(title);
     ax.set_xlabel(xlabel);
     ax.set_ylabel(ylabel);
@@ -156,11 +161,12 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
             y = [float(i) / len(x) for i in range(len(x))];
         else:
             y = [i for i in range(len(x))];
-        ax.plot(x,y, label=test, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))]);
+        ax.plot(x,y, label=test.replace('_', ' '), color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))]);
         idx += 1;
-    ax.legend(loc=0);
+    ax.legend(loc=0, fontsize=12)
     ax.grid();
     plt.savefig(outfile);
+    plt.savefig(outfile + '.pdf');
     plt.close('all');
 
 if __name__ == "__main__":

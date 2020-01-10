@@ -149,7 +149,7 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
         for k in keys:
             for name in data[module]:
                 tmp[name] = averageData(data[module][name], key="ts", value=k)
-            plot(tmp, 0, 1, xlabel="Time elapsed (s)", ylabel=k, outfile="mab_%s_%s.png" % (module, k));
+            plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=k, outfile="mab_%s_%s.png" % (module, k), xunit=3600.0);
         for name in data[module]:
             # Weight
             tmp = {"Generate": [], "Mutate": [], "Triage": []}
@@ -165,7 +165,7 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
                      "Mutate": [(v["ts"], math.log(v["MABWeight"][1],10)) for v in d], 
                      "Triage": [(v["ts"], math.log(v["MABWeight"][2],10)) for v in d]
                 }
-                plot(tmp, 0, 1, xlabel="Time elapsed (s)", ylabel="log(Weight)", title="MAB Weight", outfile="mab_weight_%s_%s_%d.png" % (name, module, i));
+                plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="log(Weight)", title="MAB Weight", outfile="mab_weight_%s_%s_%d.png" % (name, module, i), xunit=3600.0);
             # GLC
             '''
             label = ["Gain", "Loss", "Cost", "NormGain", "NormLoss", "NormCost"]
@@ -177,7 +177,7 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
                     tmp["Triage"].append([(v["ts"], v["MABGLC"][2][i]) for v in d])
                 for arm in tmp:
                     tmp[arm] = averageData(tmp[arm], key=0, value=1)
-                plot(tmp, 0, 1, xlabel="Time elapsed (s)", ylabel=label[i], title="MAB %s" % label[i], outfile="mab_%s_%s_%s.png" % (label[i].lower(), name, module), ylogscale=False);
+                plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=label[i], title="MAB %s" % label[i], outfile="mab_%s_%s_%s.png" % (label[i].lower(), name, module), ylogscale=False);
             '''
 
 

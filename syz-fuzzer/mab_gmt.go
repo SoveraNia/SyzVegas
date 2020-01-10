@@ -423,7 +423,7 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 
 func (fuzzer *Fuzzer) MABPreprocessResult(result interface{}) interface{} {
 	// Deal with cost outlier
-	cost_max := 5000000000.0 / fuzzer.fuzzerConfig.MABTimeUnit
+	cost_max := 1000000000.0 / fuzzer.fuzzerConfig.MABTimeUnit
 
 	switch result.(type) {
 	case ExecResult:

@@ -52,7 +52,7 @@ def __processTestAltAlt(test):
             except:
                 n_calls = 1
             # ret.append((executeCount, syscallCount, (ts_cur - ts_bgn) / 1000000000.0 / 60.0, len(coverage), len(coverageHashed), corpusSig))
-            cur_status["Time_Elapsed"] = (ts_cur - ts_bgn) / 1000000000.0 / 60.0
+            cur_status["Time_Elapsed"] = (ts_cur - ts_bgn) / 1000000000.0
             cur_status["Total_Coverage"] = len(coverage);
             cur_status["Corpus_Coverage"] = len(coverageCorpus); 
             ret.append(copy.deepcopy(cur_status))
@@ -64,7 +64,7 @@ def __processTestAltAlt(test):
             ts_cur = int(line)
             if ts_bgn == 0:
                 ts_bgn = ts_cur
-            if ((ts_cur - ts_bgn) / 1000000000.0) % 60.0 < 5:
+            if ((ts_cur - ts_bgn) / 1000000000.0) % 600.0 < 5:
                 print((ts_cur - ts_bgn) / 1000000000.0)
         elif line[0] == '=':
             tmp = line.split();
@@ -134,11 +134,11 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=1)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Coverage (# edges)", outfile="coverage_%s_time.png" % module);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0);
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=1, median=False)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Coverage (# edges)", outfile="coverage_%s_time_mean.png" % module);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0);
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Syscall_Count", value="Total_Coverage")

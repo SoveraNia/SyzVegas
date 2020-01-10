@@ -50,20 +50,26 @@ def averageData(data, key=0, value=[1], bin_size=100, median=True):
     cur_x = 0
     idx = [0 for _ in range(num)]
     y = [0 for _ in range(num)]
+    width = -1
     while True:
         y = []
         for i in range(num):
              while idx[i] < len(data[i]) and data[i][idx[i]][key] < cur_x:
                   idx[i] += 1
-             if idx[i] < len(data[i]):
+             _idx = idx[i]
+             if _idx >= len(data[i]):
+                 _idx = len(data[i]) - 1
+             if _idx < len(data[i]):
                  if type(value) == list:
                      tmp = []
                      for v in value:
-                         tmp.append(data[i][idx[i]][v])
+                         tmp.append(data[i][_idx][v])
                      y.append(tmp)
                  else:
-                     y.append(data[i][idx[i]][value])
-        if len(y) == 0:
+                     y.append(data[i][_idx][value])
+        if width < 0:
+             width = len(y)
+        if len(y) == 0 or len(y) < width:
              break;
         if not median:
             ret.append((cur_x, np.average(y, axis=0)))

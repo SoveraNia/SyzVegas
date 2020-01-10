@@ -867,6 +867,7 @@ func (fuzzer *Fuzzer) checkNewSignal(p *prog.Prog, info *ipc.ProgInfo) (calls []
 		thisGain = fuzzer.checkNewCallSignal(p, &inf, i)
 		if thisGain > 0 {
 			calls = append(calls, i)
+			gain += thisGain
 		}
 	}
 	extra = false

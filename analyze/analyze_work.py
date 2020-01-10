@@ -65,6 +65,7 @@ def __processTest(test):
         "Programs_Executed": [0, 0, 0],
         "Triages_Failed": 0
     }
+    exec_time = [[], [], []]
     f = open(fn)
     for line in f:
         line = line.strip('\n').strip();
@@ -75,7 +76,7 @@ def __processTest(test):
             if t_bgn < 0:
                 t_bgn = ts;
             ts = ts - t_bgn
-            cur_status["Time_Elapsed"] = ts / 1000000000.0 / 60.0
+            cur_status["Time_Elapsed"] = ts / 1000000000.0
             cur_ts = cur_status["Time_Elapsed"]
             ret.append(__flattenStatus(cur_status))
         elif ("MAB Choice: " in line or "Work Type: " in line):
@@ -96,13 +97,16 @@ def __processTest(test):
                 if "timeTotal" in d:
                     _ttot = d["timeTotal"] / 1000.0
                 _ttot = _ttot if _ttot < TIME_THRESHOLD else TIME_THRESHOLD
-                cur_status["Total_Time"][cur_func] += _ttot / 60.0
+                _ttot = _ttot if _ttot > 0.0 else 0.0
+                cur_status["Total_Time"][cur_func] += _ttot
                 if cur_func == 2: # Triage: Combine minimize and verify together
                     _texc = 0
                     if "minimizeTime" in d and "verifyTime" in d:
                         _texc = (d["minimizeTime"] + d["verifyTime"]) / 1000.0
                     _texc = _texc if _texc < TIME_THRESHOLD else TIME_THRESHOLD
-                    cur_status["Execute_Time"][2] += _texc / 60.0
+                    _texc = _texc if _texc > 0.0 else 0.0
+                    cur_status["Execute_Time"][2] += _texc
+                    exec_time[2].append(_texc)
                     if "success" in d and not d["success"]:
                         cur_status["Triages_Failed"] += 1
                 else:
@@ -110,7 +114,9 @@ def __processTest(test):
                     if "time" in d:
                         _texc = (d["time"]) / 1000.0
                     _texc = _texc if _texc < TIME_THRESHOLD else TIME_THRESHOLD
-                    cur_status["Execute_Time"][cur_func] += _texc / 60.0
+                    _texc = _texc if _texc > 0.0 else 0.0
+                    exec_time[cur_func].append(_texc)
+                    cur_status["Execute_Time"][cur_func] += _texc
             cur_status["Programs_Executed"][cur_func] += exec_count
             cur_status["Syscalls_Made"][cur_func] += syscall_count
             exec_count = 0
@@ -126,13 +132,24 @@ def __processTest(test):
             except:
                 sz = 0
     f.close();
-    return ret;
+    return ret, exec_time;
 
 def __plotWork(test):
     # __data = __processTest(test);
-    __data = loadDataCached("work_%s.cache", test, __processTest);
+    __data, exec_time = loadDataCached("work_%s.cache", test, __processTest);
     if len(__data) <= 1:
         return;
+    # Execute time percentile
+    for i in range(3):
+        print(i,
+              np.percentile(exec_time[i], 50), np.percentile(exec_time[i], 75), np.percentile(exec_time[i], 90), np.percentile(exec_time[i], 95), np.percentile(exec_time[i], 99),
+              2 * np.percentile(exec_time[i], 75) - np.percentile(exec_time[i], 25)
+              )
+    exec_time_all = exec_time[0] + exec_time[1] + exec_time[2]
+    print("All",
+              np.percentile(exec_time_all, 50), np.percentile(exec_time_all, 75), np.percentile(exec_time_all, 90), np.percentile(exec_time_all, 95), np.percentile(exec_time_all, 99),
+              2 * np.percentile(exec_time_all, 75) - np.percentile(exec_time_all, 25)
+              )
     data = {};
     for i,key in enumerate(keys):
         data[key] = []
@@ -140,7 +157,7 @@ def __plotWork(test):
             # if __data[j][0] < 350000:
                 data[key].append((__data[j][0], __data[j][1], __data[j][i+2]))
     #plot(data, 0, 2, xlabel="# of executions", ylabel="# of executions", title="", outfile="work_%s.png" % test, ylogscale=False);
-    plot(data, 1, 2, xlabel="Time elapsed (s)", ylabel="# of executions", title="", outfile="work_time_%s.png" % test, ylogscale=False);
+    plot(data, 1, 2, xlabel="Time elapsed (hr)", ylabel="# of executions", title="", outfile="work_time_%s.png" % test, ylogscale=False, xunit=3600.0);
 
 def __plotWorkDist(data, key, module="", ylogscale=False, ylabel=""):
     # Programs Executed
@@ -148,7 +165,7 @@ def __plotWorkDist(data, key, module="", ylogscale=False, ylabel=""):
     for name in data:
       for job in ["Generate", "Mutate", "Triage"]:
         tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value=key + "_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel=ylabel, outfile="work_%s_%s.png" % (module, key), ylogscale=ylogscale);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=ylabel, outfile="work_%s_%s.png" % (module, key), ylogscale=ylogscale, xunit=3600.0);
     tmp = {}
     for name in data:
       tmp[name] = {}
@@ -177,39 +194,56 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
         modules[module].append(test)
     for module in modules:
         data = {}
+        exec_time = []
         for test in modules[module]:
           try:
-            __data = loadDataCached('work_%s.cache', test, __processTest);
+            __data, exec_time = loadDataCached('work_%s.cache', test, __processTest);
             print(test, len(__data), __data[-1] if len(__data) > 0 else -1)
             name, module, run = getTestParams(test)
             print(name, module, run)
             if not name in data:
                 data[name] = []
             data[name].append(__data);
+            # Time distribution
+            tmp = {
+                "Median": {},
+                #"99 Percentile": {},
+                "Q3+IQR": {},
+            }
+            __keys = ["Generate", "Mutate", "Triage", "All"]
+            exec_time.append(exec_time[0] + exec_time[1] + exec_time[2])
+            for i in range(4):
+                 tmp["Median"][__keys[i]] = np.percentile(exec_time[i], 50)
+                 #tmp["99 Percentile"][__keys[i]] = np.percentile(exec_time[i], 99)
+                 tmp["Q3+IQR"][__keys[i]] = 2 * np.percentile(exec_time[i], 75) + np.percentile(exec_time[i], 25)
+            print(tmp)
+            plotBar1(tmp, ylabel="Time (s)", outfile="work_time_percentile_%s.png" % test)
           except:
             traceback.print_exc()
             continue
+
+
         # Average / median result
         # Time Total
         tmp = {}
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
             tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Total_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False, xunit=3600.0);
         tmp = {}
         for name in data:
             tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Total_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False, xunit=3600.0);
         # Execute Time
         tmp = {}
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
             tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False, xunit=3600.0);
         tmp = {}
         for name in data:
             tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False, xunit=3600.0);
         # Overall Choices
         __plotWorkDist(data, module=module, key="Works_Done", ylabel="Choice", ylogscale=True)
         # Syscalls made
@@ -217,7 +251,7 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
         #for name in data:
         #  for job in ["Generate", "Mutate", "Triage"]:
         #    tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Syscalls_Made_" + job, bin_size=10)
-        #plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Syscalls", outfile="work_%s_syscalls.png" % module, ylogscale=False);
+        #plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Syscalls", outfile="work_%s_syscalls.png" % module, ylogscale=False);
         # Programs Executed
         __plotWorkDist(data, module=module, key="Programs_Executed", ylabel="Programs", ylogscale=True)
 
