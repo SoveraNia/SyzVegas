@@ -20,6 +20,21 @@ linestyles = ["-",
      (0, (3, 10, 1, 10)),
      (0, (3, 1, 1, 1, 1, 1))]
 
+order = [""]
+def sortKeys(keys):
+    prefix = []
+    mid = []
+    postfix = []
+    for k in keys:
+        if '+' in k:
+            prefix.append(k)
+        elif 'Default' in k:
+            postfix.insert(0, k)
+        else:
+            mid.append(k)
+    mid.sort()
+    return prefix+mid+postfix
+
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
 xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None):
     fig = plt.figure(figsize=(8,5))
@@ -39,7 +54,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
         ax.set_yscale('symlog')
     idx = 0;
     maxx = 0
-    for test in sorted(data.keys()):
+    for test in sortKeys(data.keys()):
         label = test.replace("KCOV", "").replace('_', ' ').strip()
         if len(data[test]) == 0:
             continue;
@@ -92,7 +107,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
     idx = 0;
     bar_width = float(width) / (len(data.keys()) + 1)
     labels = None
-    for test in sorted(data.keys()):
+    for test in sortKeys(data.keys()):
         if len(data[test]) == 0:
             continue;
         if labels is None:
@@ -136,7 +151,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, xunit=1.0, yunit=1.0):
         ax.set_yscale('symlog')
     idx = 0;
     bar_width = float(width) / (len(data.keys()) + 1)
-    for test in sorted(data.keys()):
+    for test in sortKeys(data.keys()):
         if len(data[test]) == 0:
             continue;
         x = [(v[key] + idx*bar_width) / xunit for v in data[test]];
@@ -165,7 +180,7 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
     if xlogscale:
         ax.set_xscale('symlog')
     idx = 0;
-    for test in sorted(data.keys()):
+    for test in sortKeys(data.keys()):
         if value is not None and key is not None:
             x = [v[value] for v in data[test][key]];
         elif value is not None and key is None:

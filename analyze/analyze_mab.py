@@ -33,6 +33,7 @@ def __processTest(test):
         "MABPoll": 0.0,
         "MABDequeue": 0.0,
         "MABWeight": [1.0, 1.0, 1.0],
+        "MABProbability": [0.33,0.33,0.33],
         "MABGLC": [[0.0,0.0,0.0,0.0,0.0,0.0], [0.0,0.0,0.0,0.0,0.0,0.0], [0.0,0.0,0.0,0.0,0.0,0.0]]
     }
     MABGLC = [[[0.0,0.0,0.0,0.0,0.0,0.0]], [[0.0,0.0,0.0,0.0,0.0,0.0]], [[0.0,0.0,0.0,0.0,0.0,0.0]]] # Gen, Mut, Tri, [Gain, Loss, Cost, NormGain, NormLoss, NormCost] 
@@ -104,6 +105,12 @@ def __processTest(test):
                 for j in range(6):
                     status["MABGLC"][i][j] = MABGLC[i][-1][j]
             # ret.append(copy.deepcopy(status))
+        elif line[0] == '-' and "MAB Probability: " in line:
+            try:
+                tmp = json.loads(line.split("MAB Probability: ")[1])
+                status["MABProbability"] = tmp
+            except:
+                continue
     f.close();
     return ret, MABGLC;
 
@@ -150,35 +157,45 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
             for name in data[module]:
                 tmp[name] = averageData(data[module][name], key="ts", value=k)
             plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=k, outfile="mab_%s_%s.png" % (module, k), xunit=3600.0);
+
+        # MAB Prob
+        mab_prob_tri = {}
+        mab_prob_mg = {}
         for name in data[module]:
-            # Weight
-            tmp = {"Generate": [], "Mutate": [], "Triage": []}
+            if not "Sched" in name:
+                continue
+            # Probability
+            mab_prob = {"Generate": [], "Mutate": [], "Triage": []}
+            mab_prob_tri[name] = []
+            mab_prob_mg[name] = []
+            tri = []
+            mg = []
+            prob = [[], [], []]
             for i in range(len(data[module][name])):
-            #    tmp["Generate"].append([(v["ts"], math.log(v["MABWeight"][0],10)) for v in d])
-            #    tmp["Mutate"].append([(v["ts"], math.log(v["MABWeight"][1],10)) for v in d])
-            #    tmp["Triage"].append([(v["ts"], math.log(v["MABWeight"][2],10)) for v in d])
-            #for arm in tmp:
-            #    tmp[arm] = averageData(tmp[arm], key=0, value=1)
                 d = data[module][name][i]
-                tmp = {
-                     "Generate": [(v["ts"], math.log(v["MABWeight"][0],10)) for v in d], 
-                     "Mutate": [(v["ts"], math.log(v["MABWeight"][1],10)) for v in d], 
-                     "Triage": [(v["ts"], math.log(v["MABWeight"][2],10)) for v in d]
-                }
-                plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="log(Weight)", title="MAB Weight", outfile="mab_weight_%s_%s_%d.png" % (name, module, i), xunit=3600.0);
-            # GLC
-            '''
-            label = ["Gain", "Loss", "Cost", "NormGain", "NormLoss", "NormCost"]
-            for i in range(3):
-                tmp = {"Generate": [], "Mutate": [], "Triage": []}
-                for d in data[module][name]:
-                    tmp["Generate"].append([(v["ts"], v["MABGLC"][0][i]) for v in d])
-                    tmp["Mutate"].append([(v["ts"], v["MABGLC"][1][i]) for v in d])
-                    tmp["Triage"].append([(v["ts"], v["MABGLC"][2][i]) for v in d])
-                for arm in tmp:
-                    tmp[arm] = averageData(tmp[arm], key=0, value=1)
-                plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=label[i], title="MAB %s" % label[i], outfile="mab_%s_%s_%s.png" % (label[i].lower(), name, module), ylogscale=False);
-            '''
+                for v in d:
+                    ts = v["ts"]
+                    prob[0].append((ts, v["MABProbability"][0]))
+                    prob[1].append((ts, v["MABProbability"][1]))
+                    prob[2].append((ts, v["MABProbability"][2]))
+                    if v["MABProbability"][2] > 0:
+                        tri.append((ts, v["MABProbability"][2]))
+                    if v["MABProbability"][0] > 0 and v["MABProbability"][1] > 0:
+                        mg.append((ts, math.log(v["MABProbability"][1] / v["MABProbability"][0], 10)))
+                mab_prob["Generate"].append(prob[0])
+                mab_prob["Mutate"].append(prob[1])
+                mab_prob["Triage"].append(prob[2])
+                mab_prob_tri[name].append(tri)
+                mab_prob_mg[name].append(mg)
+            for arm in mab_prob:
+                mab_prob[arm] = averageData(mab_prob[arm], key=0, value=1, bin_size=1800.0)
+            mab_prob_mg[name] = averageData(mab_prob_mg[name], key=0, value=1, bin_size=60.0)
+            mab_prob_tri[name] = averageData(mab_prob_tri[name], key=0, value=1, bin_size=60.0)
+            plot(mab_prob, 0, 1, xlabel="Time elapsed (hr)", ylabel="log(Weight)", title="MAB Probability", outfile="mab_probability_%s.png" % name, xunit=3600.0, xstep=4);
+        plot(mab_prob_tri, 0, 1, xlabel="Time elapsed (hr)", ylabel="Probability", title="", outfile="mab_probability_tri.png", xunit=3600.0, xstep=4);
+        plot(mab_prob_mg,  0, 1, xlabel="Time elapsed (hr)", ylabel="log(Pr(Mutate) / Pr(Generate))", title="", outfile="mab_probability_mg.png", xunit=3600.0, xstep=4);
+
+
 
 
 
