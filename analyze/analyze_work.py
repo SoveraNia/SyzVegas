@@ -229,21 +229,21 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
             tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Total_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False, xunit=3600.0);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
         tmp = {}
         for name in data:
             tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Total_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False, xunit=3600.0);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
         # Execute Time
         tmp = {}
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
             tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False, xunit=3600.0);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
         tmp = {}
         for name in data:
             tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False, xunit=3600.0);
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
         # Overall Choices
         __plotWorkDist(data, module=module, key="Works_Done", ylabel="Choice", ylogscale=True)
         # Syscalls made

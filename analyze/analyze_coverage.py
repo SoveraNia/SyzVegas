@@ -55,7 +55,6 @@ def __processTestAltAlt(test):
             cur_status["Time_Elapsed"] = (ts_cur - ts_bgn) / 1000000000.0
             cur_status["Total_Coverage"] = len(coverage);
             cur_status["Corpus_Coverage"] = len(coverageCorpus); 
-            ret.append(copy.deepcopy(cur_status))
             cur_status["Program_Count"] += 1;
             cur_status["Syscall_Count"] += n_calls;
             syscallCount += n_calls
@@ -66,6 +65,7 @@ def __processTestAltAlt(test):
                 ts_bgn = ts_cur
             if ((ts_cur - ts_bgn) / 1000000000.0) % 600.0 < 5:
                 print((ts_cur - ts_bgn) / 1000000000.0)
+            ret.append(copy.deepcopy(cur_status))
         elif line[0] == '=':
             tmp = line.split();
             try:
@@ -124,33 +124,36 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
             traceback.print_exc();
             pass;
         # Cliff's Delta
+        tmp = {}
         for name0 in data:
+            if "Default" in name0:
+                continue
             for name1 in data:
-                if name0 <= name1:
+                if not "Default" in name1:
                     continue
-                tmp = cliffsDelta(data[name0], data[name1], key="Time_Elapsed", value="Total_Coverage", bin_size=10)
-                plot({"Cliff's Delta": tmp}, 0, 1, xlabel="Time elapsed (min)", ylabel="Cliff's Delta", outfile="coverage_cd_%s-VS-%s_time.png" % (name0, name1));
+                tmp[name0] = cliffsDelta(data[name0], data[name1], key="Time_Elapsed", value="Total_Coverage", bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Cliff's Delta", outfile="coverage_cd_time.png", xunit=3600.0, nmarkers=12, xstep=4);
         # Average / median result
         tmp = {}
         for name in data:
-            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=1)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0);
+            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0, nmarkers=12, xstep=4);
         tmp = {}
         for name in data:
-            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=1, median=False)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0);
+            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600, median=False)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0, nmarkers=12, xstep=4);
+        #tmp = {}
+        #for name in data:
+        #    tmp[name] = averageData(data[name], key="Syscall_Count", value="Total_Coverage")
+        #plot(tmp, 0, 1, xlabel="Syscalls executed", ylabel="Coverage", title="Coverage", outfile="coverage_%s_call.png" % module);
+        #tmp = {}
+        #for name in data:
+        #    tmp[name] = averageData(data[name], key="Program_Count", value="Total_Coverage")
+        #plot(tmp, 0, 1, xlabel="Programs executed", ylabel="Coverage", title="Coverage", outfile="coverage_%s_prog.png" % module);
         tmp = {}
         for name in data:
-            tmp[name] = averageData(data[name], key="Syscall_Count", value="Total_Coverage")
-        plot(tmp, 0, 1, xlabel="Syscalls executed", ylabel="Coverage", title="Coverage", outfile="coverage_%s_call.png" % module);
-        tmp = {}
-        for name in data:
-            tmp[name] = averageData(data[name], key="Program_Count", value="Total_Coverage")
-        plot(tmp, 0, 1, xlabel="Programs executed", ylabel="Coverage", title="Coverage", outfile="coverage_%s_prog.png" % module);
-        tmp = {}
-        for name in data:
-            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Corpus_Coverage", bin_size=1)
-        plot(tmp, 0, 1, xlabel="Time elapsed (min)", ylabel="Corpus Signal", title="Coverage", outfile="corpusSig_%s_time.png" % module);
+            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Corpus_Coverage", bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Corpus Signal", title="Coverage", outfile="corpusSig_%s_time.png" % module, xunit=3600.0, nmarkers=12, xstep=4);
 
     # plot(data, 1, 3, xlabel="Time elapsed (min)", ylabel="Coverage", title="Hashed Coverage", outfile="coverage_hashed.png");
 

@@ -60,7 +60,6 @@ def averageData(data, key=0, value=[1], bin_size=100, median=True):
              _idx = idx[i]
              if _idx >= len(data[i]):
                  _idx = len(data[i]) - 1
-             else:
                  end += 1
              if _idx < len(data[i]):
                  if type(value) == list:
@@ -72,13 +71,15 @@ def averageData(data, key=0, value=[1], bin_size=100, median=True):
                      y.append(data[i][_idx][value])
         if width < 0:
              width = len(y)
-        if len(y) == 0 or len(y) < width or end == width:
+        if len(y) == 0 or len(y) < width:
              break;
         if not median:
             ret.append((cur_x, np.average(y, axis=0)))
         else:
             ret.append((cur_x, np.median(y, axis=0)))
         cur_x += bin_size
+        if end == width:
+            break
     return ret
 
 def __cliffsDelta(a, b):

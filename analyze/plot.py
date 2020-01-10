@@ -4,6 +4,7 @@ from matplotlib.patches import Rectangle
 import numpy as np
 
 linecolors = ["r", "g", "b", "black"]
+markers = ['s', 'o', '^', 'v', '+', 'x', 'd']
 linestyles = ["-",
      (0, (1, 3)),
      (0, (5, 5)),
@@ -20,7 +21,7 @@ linestyles = ["-",
      (0, (3, 1, 1, 1, 1, 1))]
 
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0):
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None):
     fig = plt.figure(figsize=(8,5))
     ax = plt.subplot(111)
     plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
@@ -37,17 +38,23 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     if ylogscale:
         ax.set_yscale('symlog')
     idx = 0;
+    maxx = 0
     for test in sorted(data.keys()):
-        label = test.replace('_', ' ')
+        label = test.replace("KCOV", "").replace('_', ' ').strip()
         if len(data[test]) == 0:
             continue;
         x = [v[key] / xunit for v in data[test]];
         y = [v[value] / yunit for v in data[test]];
+        maxx = maxx if maxx > x[-1] else x[-1]
+        marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
+        markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
         if not scatter:
-            ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))]);
+            ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
         else:
-            ax.scatter(x,y, label=label, color=linecolors[idx%len(linecolors)]);
+            ax.scatter(x,y, label=label, color=linecolors[idx%len(linecolors)], marker=marker, markersize=8, markevery=markevery);
         idx += 1;
+    if xstep is not None:
+        ax.set_xticks([xstep*i for i in range(int(round(maxx / xstep))+1)])
     ax.grid();
     # ax.legend(bbox_to_anchor=(1.01, 1.0))
     ax.legend(loc=0, fontsize=12)
@@ -97,7 +104,8 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
             x.append(len(x) * width + (idx+0.5)*bar_width);
             y_mean.append(np.mean(data[test][key]))
             y_std.append(np.std(data[test][key]))
-        ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=test, color=linecolors[idx%len(linecolors)], edgecolor=linecolors[idx%len(linecolors)]);
+        tlabel = test.replace("KCOV", "").replace('_', ' ').strip()
+        ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=tlabel, color=linecolors[idx%len(linecolors)], edgecolor=linecolors[idx%len(linecolors)]);
         idx += 1;
     ax.grid();
     ax.set_xticks([(width * i + len(data.keys()) * bar_width / 2) for i in range(len(labels))])
@@ -142,7 +150,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, xunit=1.0, yunit=1.0):
     plt.close('all');
 
 def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfile="out.png", xrange=None,
-        xlogscale=False, raw=False):
+        xlogscale=False, raw=False, nmarkers=11):
     fig = plt.figure(figsize=(8,5))
     ax = plt.subplot(111)
     plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
@@ -173,7 +181,10 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
             y = [float(i) / len(x) for i in range(len(x))];
         else:
             y = [i for i in range(len(x))];
-        ax.plot(x,y, label=test.replace('_', ' '), color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))]);
+        label = test.replace("KCOV", "").replace('_', ' ').strip()
+        marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
+        markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
+        ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
         idx += 1;
     ax.legend(loc=0, fontsize=12)
     ax.grid();
