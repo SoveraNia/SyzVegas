@@ -13,15 +13,14 @@ from plot import plot, plotBar, plotCDF, plotBar1
 from utils import loadDataCached, getTestParams
 
 class Program:
-    def __init__(self, sig, data):
+    def __init__(self, sig):
         self.id = 0;
         self.ts = 0;
         self.executed = True;
         self.inCorpus = False;
         self.corpusSource = None;
         self.sig = sig
-        self.data = data;
-        self.size = len(data.strip().split('\n'))
+        self.size = 0
         self.coverage = []
         self.coverageCorpus = []
         self.minimize = None
@@ -37,7 +36,7 @@ class Program:
         return self.__dict__
     @staticmethod
     def FromDict(d):
-        ret = Program('','')
+        ret = Program('')
         for k in d:
             ret.__setattr__(k, d[k])
         return ret
@@ -141,7 +140,7 @@ def __processTest(test):
             elif (line == '<' or line == '<<<') and status_program == True:
                 status_program = False
                 if status != "MINIMIZE_FROM" and status != "MUTATE_FROM":
-                    p_current = Program(sig=sig_current, data=data_current)
+                    p_current = Program(sig=sig_current)
                     p_current.ts = (ts_cur - ts_bgn) / 1000000000
                     p_current.id = len(p_all)
                     p_all.append(p_current)
@@ -156,7 +155,7 @@ def __processTest(test):
                 elif status == "MINIMIZE_FROM":
                     sig_from = sig_current
                     if not sig_from in p_triage:
-                        p_current = Program(sig=sig_current, data=data_current)
+                        p_current = Program(sig=sig_current)
                         p_current.executed = False
                         p_current.ts = (ts_cur - ts_bgn) / 1000000000
                         p_current.id = len(p_all)
@@ -189,7 +188,7 @@ def __processTest(test):
                     if not sig_from in p_corpus:
                         print("This should not happen!!!!")
                         print(sig_from)
-                        p_current = Program(sig=sig_current, data=data_current)
+                        p_current = Program(sig=sig_current)
                         p_current.executed = False
                         p_current.ts = (ts_cur - ts_bgn) / 1000000000
                         p_current.id = len(p_all)
@@ -538,10 +537,10 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
     tmp = {}
     for name in datas_seedpower:
         plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-25, 425));
-        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 10005), xlogscale=True);
+        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True);
         plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False);
         tmp[name] = datas_seedpower[name]["All"]
-    plotCDF(tmp, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_all.png", xrange=(-0.5, 10005), xlogscale=True);
+    plotCDF(tmp, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_all.png", xrange=(-0.5, 1005), xlogscale=True);
     # Seed power sum
     #for name in datas_seedpower_sum:
     #    for job in datas_seedpower_sum[name]:

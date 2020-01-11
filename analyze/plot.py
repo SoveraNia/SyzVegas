@@ -5,6 +5,8 @@ import numpy as np
 
 linecolors = ["r", "g", "b", "black"]
 markers = ['s', 'o', '^', 'v', '+', 'x', 'd']
+fillcolors = ["tab:red", "tab:olive", "tab:blue", "tab:cyan"]
+patterns = ['--', 'xx', '++', '\\\\', '**', '..']
 linestyles = ["-",
      (0, (1, 3)),
      (0, (5, 5)),
@@ -120,7 +122,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None):
             y_mean.append(np.mean(data[test][key]))
             y_std.append(np.std(data[test][key]))
         tlabel = test.replace("KCOV", "").replace('_', ' ').strip()
-        ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=tlabel, color=linecolors[idx%len(linecolors)], edgecolor=linecolors[idx%len(linecolors)]);
+        ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=tlabel, color=fillcolors[idx%len(fillcolors)], edgecolor='black', hatch=patterns[idx % len(patterns)]);
         idx += 1;
     ax.grid();
     ax.set_xticks([(width * i + len(data.keys()) * bar_width / 2) for i in range(len(labels))])

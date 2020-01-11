@@ -22,6 +22,7 @@ from analyze_triage import plotTriage
 from analyze_mab import plotMAB
 from analyze_seeds import plotSeeds
 from analyze_mutationtree import plotMutationTree
+from analyze_crashes import plotCrashes
 from plot import plot
 
 if __name__ == "__main__":
@@ -45,6 +46,8 @@ if __name__ == "__main__":
                   help="Analyze Mutation Tree", default=False)
     parser.add_option("-s", "--seed", dest="analyze_seed", action="store_true",
                   help="Analyze Seed", default=False)
+    parser.add_option("-C", "--crash", dest="analyze_crashes", action="store_true",
+                  help="Analyze Crashes", default=False)
 
     (options, args) = parser.parse_args()
     blacklist = options.blacklist.split(',') if len(options.blacklist) > 0 else []
@@ -70,6 +73,8 @@ if __name__ == "__main__":
             plotPrograms(tests)
         if options.analyze_seed or options.analyze_all:
             plotSeeds(tests)
+        if options.analyze_crashes or options.analyze_all:
+            plotCrashes(tests)
         if options.analyze_mutationtree or options.analyze_all:
             plotMutationTree(tests)
         #plotSignal(tests)
