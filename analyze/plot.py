@@ -38,10 +38,18 @@ def sortKeys(keys):
     return prefix+mid+postfix
 
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None):
-    fig = plt.figure(figsize=(8,5))
-    ax = plt.subplot(111)
-    plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
+    fig = None
+    ax = None
+    if small:
+        fig = plt.figure(figsize=(4,4))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+    else:
+        fig = plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
@@ -65,6 +73,8 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
         maxx = maxx if maxx > x[-1] else x[-1]
         marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
         markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
+        if markevery == 0:
+            markevery = 1
         if not scatter:
             ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
         else:
@@ -80,19 +90,26 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     plt.close('all');
 
 def plotBar1(data, width=1, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None):
-    fig = plt.figure(figsize=(8,5))
-    ax = plt.subplot(111)
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, small=False):
+    fig = None
+    ax = None
     total_test_len = 0
     for test in data.keys():
         total_test_len += len(test)
     bbox_to_anchor = False
     if len(data.keys()) > 4 or total_test_len > 40:
         bbox_to_anchor = True
-    if bbox_to_anchor:
-        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
+    if small:
+        fig = plt.figure(figsize=(4,4))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
     else:
-        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.9, wspace=0, hspace=0)
+        fig = plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        if bbox_to_anchor:
+            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
+        else:
+            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.9, wspace=0, hspace=0)
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
@@ -167,10 +184,17 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, xunit=1.0, yunit=1.0):
     plt.close('all');
 
 def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfile="out.png", xrange=None,
-        xlogscale=False, raw=False, nmarkers=11):
-    fig = plt.figure(figsize=(8,5))
-    ax = plt.subplot(111)
-    plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+        xlogscale=False, raw=False, nmarkers=11, small=False):
+    fig = None
+    ax = None
+    if small:
+        fig = plt.figure(figsize=(4,4))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+    else:
+        fig = plt.figure(figsize=(8,5))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
@@ -201,6 +225,8 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
         label = test.replace("KCOV", "").replace('_', ' ').strip()
         marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
         markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
+        if markevery == 0:
+            markevery = 1
         ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
         idx += 1;
     ax.legend(loc=0, fontsize=12)

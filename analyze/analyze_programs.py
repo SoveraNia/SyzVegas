@@ -411,6 +411,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         plot(datas[test], 0, 1, xlabel="Time elapsed (hr)", ylabel="Total coverage (# edges)", title="", outfile="programs_%s.png" % test, xunit=3600.0);
         plot(datas[test+"_average"], 0, 1, xlabel="Time elapsed (hr)", ylabel="Average coverage (# edges)", title="", outfile="programs_%s_avg.png" % test, ylogscale=True, xunit=3600);
         # By bins
+        '''
         data_bin = {
             "Generate_Coverage": __binSplit(__data, x="Time_Elapsed", y="Generate_Coverage", c="Generate_Count", bin_size=bin_size)[0],
             "Minimize_Coverage": __binSplit(__data, x="Time_Elapsed", y="Minimize_Coverage", c="Minimize_Count", bin_size=bin_size)[0],
@@ -423,6 +424,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         }
         plotBar(data_bin, 0, 1, width=bin_size, xlabel="Time elapsed (hr)", ylabel="# of signals", title="", outfile="programs_bin_%s.png" % test, xunit=3600.0);
         plotBar(data_bin_avg, 0, 1, width=bin_size, xlabel="Time elapsed (hr)", ylabel="# of signals", title="", outfile="programs_bin_avg_%s.png" % test, xunit=3600.0);
+        '''
         # Program size
         datas_pgsize[test] = [p.size for p in p_all]
         datas_cpsize[test] = [];
@@ -536,9 +538,9 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         datas_seedpower_sum_avg[name]["All"].append((data_seedpower_sum["Generate"] + data_seedpower_sum["Mutate"] + data_seedpower_sum["Minimize"]) / len(data_seedpower["All"]) if len(data_seedpower["All"]) > 0 else 0.0) 
     tmp = {}
     for name in datas_seedpower:
-        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-25, 425));
-        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True);
-        plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False);
+        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-25, 825), small=True);
+        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True, small=True);
+        plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False, small=True);
         tmp[name] = datas_seedpower[name]["All"]
     plotCDF(tmp, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_all.png", xrange=(-0.5, 1005), xlogscale=True);
     # Seed power sum
