@@ -7,6 +7,25 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import numpy as np
 
+def filterLog(infile, outfile):
+    buf = b''
+    lc = 0
+    with open(outfile, "w+") as fout:
+      with open(infile, "rb") as fin:
+        byte = fin.read(1)
+        while byte:
+          buf += byte
+          if byte == b'\n':
+            try:
+              lc += 1
+              s = buf.decode()
+              if s[0] != '[':
+                fout.write(s)
+            except:
+              pass
+            buf = b''
+          byte = fin.read(1)
+
 def loadDataCached(cache_fn_fmt, test, func):
     cache_fn = cache_fn_fmt % test
     if os.path.isfile(cache_fn):
@@ -55,10 +74,12 @@ def averageData(data, key=0, value=1, bin_size=100, median=True, bin_avg=False):
         y = []
         end = 0
         for i in range(num):
+             if len(data[i]) == 0:
+                 continue
              b_avg = []
              while idx[i] < len(data[i]) and data[i][idx[i]][key] < cur_x:
-                  b_avg.append(data[i][idx[i]][value])
-                  idx[i] += 1
+                 b_avg.append(data[i][idx[i]][value])
+                 idx[i] += 1
              _idx = idx[i]
              if idx[i] >= len(data[i]):
                  _idx = len(data[i]) - 1
@@ -75,9 +96,9 @@ def averageData(data, key=0, value=1, bin_size=100, median=True, bin_avg=False):
              else:
                  y.append(data[i][_idx][value])
         if width < 0:
-             width = len(y)
+            width = len(y)
         if len(y) == 0 or len(y) < width:
-             break;
+            break;
         if not median:
             ret.append((cur_x, np.average(y)))
         else:
@@ -107,21 +128,37 @@ def cliffsDelta(data0, data1, key=0, value=1, bin_size=30):
     cur_x = 0
     idx0 = [0 for _ in range(n0)]
     idx1 = [0 for _ in range(n1)]
+    width0 = n0
+    width1 = n1
     while True:
         y0 = []
         y1 = []
+        end0 = 0
+        end1 = 0
         for i in range(n0):
+             if len(data0[i]) == 0:
+                 end0 += 1
+                 continue
              while idx0[i] < len(data0[i]) and data0[i][idx0[i]][key] < cur_x:
                  idx0[i] += 1
-             if idx0[i] < len(data0[i]):
-                 y0.append(data0[i][idx0[i]][value])
+             _idx = idx0[i]
+             if idx0[i] >= len(data0[i]):
+                 _idx = len(data0[i]) - 1
+                 end0 += 1
+             y0.append(data0[i][_idx][value])
         for i in range(n1):
+             if len(data1[i]) == 0:
+                 end1 += 1
+                 continue
              while idx1[i] < len(data1[i]) and data1[i][idx1[i]][key] < cur_x:
                  idx1[i] += 1
-             if idx1[i] < len(data1[i]):
-                 y1.append(data1[i][idx1[i]][value])
-        if len(y0) + len(y1) != n0 + n1:
-             break;
+             _idx = idx1[i]
+             if idx1[i] >= len(data1[i]):
+                 _idx = len(data1[i]) - 1
+                 end1 += 1
+             y1.append(data1[i][_idx][value])
+        if end0 == width0 and end1 == width1:
+            break;
         # ret.append((cur_x, np.average(y, axis=0)))
         cd = __cliffsDelta(y0, y1)
         ret.append((cur_x, cd))
