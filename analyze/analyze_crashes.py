@@ -20,6 +20,7 @@ def __getStartTime(test):
     stat = os.stat(inslock)
     # print(stat)
     ts_stat = stat.st_mtime
+    return ts_stat
 
     fn = "result_" + test
     ts = 0.0
