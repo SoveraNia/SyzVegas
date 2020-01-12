@@ -9,7 +9,7 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import pygraphviz as PG
 
-from plot import plot, plotBar, plotCDF, plotBar1
+from plot import plot, plotBar, plotCDF, plotBar1, plotCDF2
 from utils import loadDataCached, getTestParams
 from analyze_programs import Program, __processTest 
 
@@ -112,7 +112,7 @@ def plotMutationTree(tests):
     datas = {}
     for test in tests:
         name, module, run = getTestParams(test)
-        name = name + '_' + module
+        # name = name + '_' + module
         datas[name] = {
             "Num_Trees": [],
             "Tree_Height": [],
@@ -127,7 +127,7 @@ def plotMutationTree(tests):
         }
     for test in tests:
         name, module, run = getTestParams(test)
-        name = name + '_' + module
+        # name = name + '_' + module
         print("Plotting mutation tree for %s" % test)
         try:
             p_all, p_generated, p_corpus, p_triage, __data = loadDataCached('program_%s.cache', test, __processTest);
@@ -169,17 +169,18 @@ def plotMutationTree(tests):
                     datas[name]["Seed_Subtree_Height"]["All"].append(n.height)
                     datas[name]["Seed_Subtree_Size"]["All"].append(n.size)
     # Overall Tree size and height
-    plotCDF(datas, key="Tree_Height", xlabel="Max Tree Height", ylabel="CD", title="", outfile="mt_height_overall.png", xlogscale=False, raw=True, xrange=(-5,105));
-    plotCDF(datas, key="Tree_Size", xlabel="Tree Size", ylabel="CD", title="", outfile="mt_size_overall.png", xlogscale=True, raw=True);
-    plotCDF(datas, key="Node_Degree", xlabel="Tree Size", ylabel="CD", title="", outfile="mt_degree_overall.png", xlogscale=True, raw=True);
+    # plotCDF(datas, key="Tree_Height", xlabel="Tree Height", ylabel="Cumulative # Trees", title="", outfile="mt_height_overall.png", xlogscale=True, raw=True, small=False);
+    # plotCDF(datas, key="Tree_Size", xlabel="Tree Size", ylabel="Cumulative # Trees", title="", outfile="mt_size_overall.png", xlogscale=True, raw=True, small=False);
+    plotCDF2([datas, datas], key=["Tree_Size", "Tree_Height"], xlabel=["Tree Size", "Tree Height"], ylabel=["Cumulative # Trees", "Cumulative # Trees"], outfile="mt_size_height_overall.png", xlogscale=[True, True], raw=[True, True]);
+    # plotCDF(datas, key="Node_Degree", xlabel="Node Degree", ylabel="Cumulative # Nodes", title="", outfile="mt_degree_overall.png", xlogscale=True, raw=True);
 
-    plotCDF(datas, key="Tree_Height", xlabel="Max Tree Height", ylabel="CDF", title="", outfile="mt_height_overall_cdf.png", xlogscale=False, xrange=(-5,105));
-    plotCDF(datas, key="Tree_Size", xlabel="Tree Size", ylabel="CDF", title="", outfile="mt_size_overall_cdf.png", xlogscale=True);
-    plotCDF(datas, key="Node_Degree", xlabel="Tree Size", ylabel="CDF", title="", outfile="mt_degree_overall_cdf.png", xlogscale=True);
+    #plotCDF(datas, key="Tree_Height", xlabel="Tree Height", ylabel="CDF", title="", outfile="mt_height_overall_cdf.png", xlogscale=False, xrange=(-5,105));
+    #plotCDF(datas, key="Tree_Size", xlabel="Tree Size", ylabel="CDF", title="", outfile="mt_size_overall_cdf.png", xlogscale=True);
+    #plotCDF(datas, key="Node_Degree", xlabel="Tree Size", ylabel="CDF", title="", outfile="mt_degree_overall_cdf.png", xlogscale=True);
 
     # Leaf nodes per tree
-    plotCDF(datas, key="Leaf_Nodes_Per_Tree", xlabel="# of nodes", ylabel="CDF", title="", outfile="mt_leaf_per_tree_cdf.png", xlogscale=True);
-    plotCDF(datas, key="Leaf_Nodes_Percentage_Per_Tree", xlabel="# of nodes", ylabel="CDF", title="", outfile="mt_leaf_per_tree_perc_cdf.png", xlogscale=False);
+    #plotCDF(datas, key="Leaf_Nodes_Per_Tree", xlabel="# of nodes", ylabel="CDF", title="", outfile="mt_leaf_per_tree_cdf.png", xlogscale=True);
+    #plotCDF(datas, key="Leaf_Nodes_Percentage_Per_Tree", xlabel="# of nodes", ylabel="CDF", title="", outfile="mt_leaf_per_tree_perc_cdf.png", xlogscale=False);
 
     # Num Trees
     tmp = {}

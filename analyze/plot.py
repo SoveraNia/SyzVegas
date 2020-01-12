@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
+from matplotlib.figure import SubplotParams
 import numpy as np
 
 linecolors = ["r", "g", "b", "black"]
@@ -37,6 +38,66 @@ def sortKeys(keys):
     mid.sort()
     return prefix+mid+postfix
 
+def __plotAx(ax, data, key, value, xlabel="", ylabel="", title="", xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
+    ax.set_title(title, fontsize=20);
+    ax.set_xlabel(xlabel, fontsize=16);
+    ax.set_ylabel(ylabel, fontsize=16);
+    ax.tick_params(labelsize=12);
+    if not xmax is None:
+        ax.set_xlim(0,xmax);
+    if not ymax is None:
+        ax.set_ylim(0,ymax);
+    if xlogscale:
+        ax.set_xscale('symlog')
+    if ylogscale:
+        ax.set_yscale('symlog')
+    idx = 0;
+    maxx = 0
+    lines = []
+    labels = []
+    for test in sortKeys(data.keys()):
+        label = test.replace("KCOV", "").replace('_', ' ').strip()
+        if len(data[test]) == 0:
+            continue;
+        x = [v[key] / xunit for v in data[test]];
+        y = [v[value] / yunit for v in data[test]];
+        maxx = maxx if maxx > x[-1] else x[-1]
+        marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
+        markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
+        if markevery == 0:
+            markevery = 1
+        l = None
+        if not scatter:
+            l = ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
+        else:
+            l = ax.scatter(x,y, label=label, color=linecolors[idx%len(linecolors)], marker=marker, markersize=8, markevery=markevery);
+        lines.append(l)
+        labels.append(label)
+        idx += 1;
+    if xstep is not None:
+        ax.set_xticks([xstep*i for i in range(int(round(maxx / xstep))+1)])
+    ax.grid();
+    return lines, labels
+
+def plot2(data, key, value, xlabel=["",""], ylabel=["",""], title=["",""], outfile="out.png",
+xlogscale=[False,False], ylogscale=[False,False], xmax=[None,None], ymax=[None,None], scatter=[False,False], xunit=[1.0,1.0], yunit=[1.0,1.0], nmarkers=[12,12], xstep=[None,None]):
+    ax = [None, None]
+    fig = plt.figure(figsize=(8,5))
+    # fig, (ax[0], ax[1]) = plt.subplots(1, 2, figsize=(8,5), subplotpars=SubplotParams(top=0.98,bottom=0.2,right=0.95,left=0.2,hspace=0.2,wspace=0))
+    lines = []
+    labels = []
+    for i in range(2):
+        ax[i] = plt.subplot(1,2,i+1)
+        lines, labels = __plotAx(ax[i], data[i], key[i], value[i], xlabel=xlabel[i], ylabel=ylabel[i], title=title[i], xlogscale=xlogscale[i], ylogscale=ylogscale[i], xmax=xmax[i], ymax=ymax[i], scatter=scatter[i], xunit=xunit[i], yunit=yunit[i], nmarkers=nmarkers[i], xstep=xstep[i], small=True)
+    fig.subplots_adjust(bottom=0.25,top=0.98,left=0.12,right=0.99,wspace=0.35)
+    #fig.tight_layout(pad=3.0)
+    fig.legend(lines, labels=labels, fontsize=12, loc=8, ncol=len(lines))
+    plt.savefig(outfile);
+    plt.savefig(outfile + '.pdf');
+    plt.close('all');
+
+
+
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
 xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
     fig = None
@@ -48,7 +109,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     else:
         fig = plt.figure(figsize=(8,5))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+        plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
 
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
@@ -107,9 +168,9 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, small=False):
         fig = plt.figure(figsize=(8,5))
         ax = plt.subplot(111)
         if bbox_to_anchor:
-            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.7, top=0.9, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.8, top=0.98, wspace=0, hspace=0)
         else:
-            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.9, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
@@ -182,6 +243,67 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, xunit=1.0, yunit=1.0):
     plt.savefig(outfile);
     plt.savefig(outfile+'.pdf');
     plt.close('all');
+
+def __plotCDFAx(ax, data, key=None, value=None, xlabel="", ylabel="CDF", title="", xrange=None, xlogscale=False, raw=False, nmarkers=11, small=False):
+    ax.set_title(title, fontsize=20);
+    ax.set_xlabel(xlabel, fontsize=16);
+    ax.set_ylabel(ylabel, fontsize=16);
+    ax.tick_params(labelsize=12);
+    if not xrange is None:
+        ax.set_xlim(xrange[0],xrange[1]);
+    if not raw:
+        ax.set_ylim(0,1.05);
+    if xlogscale:
+        ax.set_xscale('symlog')
+    idx = 0;
+    lines = []
+    labels = []
+    for test in sortKeys(data.keys()):
+        if value is not None and key is not None:
+            x = [v[value] for v in data[test][key]];
+        elif value is not None and key is None:
+            x = [v[value] for v in data[test]];
+        elif value is None and key is not None:
+            x = [v for v in data[test][key]];
+        else:
+            x = [v for v in data[test]]
+        x.sort();
+        if len(x) == 0:
+            continue;
+        if not raw:
+            y = [float(i) / len(x) for i in range(len(x))];
+        else:
+            y = [i for i in range(len(x))];
+        label = test.replace("KCOV", "").replace('_', ' ').strip()
+        marker = markers[int(idx%len(markers))] if nmarkers > 1 else None
+        markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
+        if markevery == 0:
+            markevery = 1
+        l = ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
+        lines.append(l)
+        labels.append(label)
+        idx += 1;
+    ax.grid();
+    return lines, labels
+
+def plotCDF2(data, key=[None, None], value=[None, None], xlabel=["",""], ylabel=["CDF", "CDF"], title=["",""], outfile="out.png", xrange=[None, None],
+        xlogscale=[False,False], raw=[False,False], nmarkers=[11,11]):
+    ax = [None, None]
+    fig, (ax[0], ax[1]) = plt.subplots(1, 2, figsize=(8,5))
+    # fig, (ax[0], ax[1]) = plt.subplots(1, 2, figsize=(8,5), subplotpars=SubplotParams(top=0.98,bottom=0.2,right=0.95,left=0.2,hspace=0.2,wspace=0))
+    lines = []
+    labels = []
+    for i in range(2):
+        ax[i] = plt.subplot(1,2,i+1)
+        lines, labels = __plotCDFAx(ax[i], data[i], key=key[i], value=value[i], xlabel=xlabel[i], ylabel=ylabel[i], title=title[i], xrange=xrange[i], xlogscale=xlogscale[i], raw=raw[i], nmarkers=nmarkers[i], small=True)
+    fig.subplots_adjust(bottom=0.25,top=0.98,left=0.12,right=0.99,wspace=0.35)
+    #fig.tight_layout(pad=3.0)
+    fig.legend(lines, labels=labels, fontsize=12, loc=8, ncol=len(lines))
+    plt.savefig(outfile);
+    plt.savefig(outfile + '.pdf');
+    plt.close('all');
+
+
 
 def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfile="out.png", xrange=None,
         xlogscale=False, raw=False, nmarkers=11, small=False):

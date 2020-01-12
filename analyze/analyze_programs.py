@@ -9,7 +9,7 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import pygraphviz as PG
 
-from plot import plot, plotBar, plotCDF, plotBar1
+from plot import plot, plotBar, plotCDF, plotBar1, plot2
 from utils import loadDataCached, getTestParams
 
 class Program:
@@ -331,7 +331,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
     datas_mutls = {}
     for test in tests:
         name, module, run = getTestParams(test)
-        name = name + '_' + module
+        # name = name + '_' + module
         if not name in datas_seedpower:
             datas_seednum[name] = {
                 "Generate": [],
@@ -377,7 +377,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
 
     for test in tests:
         name, module, run = getTestParams(test)
-        name = name + '_' + module
+        # name = name + '_' + module
         print("Plotting programs for %s" % test)
         try:
             # p_all, p_generated, p_corpus, p_triage, __data = __processTest(test);
@@ -408,8 +408,9 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
             "Minimization": [(v["Time_Elapsed"], v["Minimize_Coverage"] / v["Minimize_Count"] if v["Minimize_Count"] > 0 else 0) for v in __data],
             "Mutation": [(v["Time_Elapsed"], v["Mutate_Coverage"] / v["Mutate_Count"] if v["Mutate_Count"] > 0 else 0) for v in __data],
         } 
-        plot(datas[test], 0, 1, xlabel="Time elapsed (hr)", ylabel="Total coverage (# edges)", title="", outfile="programs_%s.png" % test, xunit=3600.0);
-        plot(datas[test+"_average"], 0, 1, xlabel="Time elapsed (hr)", ylabel="Average coverage (# edges)", title="", outfile="programs_%s_avg.png" % test, ylogscale=True, xunit=3600);
+        #plot(datas[test], 0, 1, xlabel="Time elapsed (hr)", ylabel="Total coverage (# edges)", title="", outfile="programs_%s.png" % test, xunit=3600.0);
+        #plot(datas[test+"_average"], 0, 1, xlabel="Time elapsed (hr)", ylabel="Average coverage (# edges)", title="", outfile="programs_%s_avg.png" % test, ylogscale=True, xunit=3600);
+        plot2((datas[test], datas[test+"_average"]), (0,0), (1,1), xlabel=("Time elapsed (hr)","Time elapsed (hr)"), ylabel=("Total coverage (# edges)","Average coverage (# edges)"), outfile="programs_coverage_%s.png" % test, ylogscale=[True,True], xunit=(3600.0, 3600.0));
         # By bins
         '''
         data_bin = {
