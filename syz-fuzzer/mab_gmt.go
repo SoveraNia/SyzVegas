@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/syzkaller/pkg/glc"
 	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/log"
 	"github.com/google/syzkaller/pkg/rpctype"
@@ -17,12 +18,12 @@ import (
 
 type MABGMTStatus struct {
 	MABMu             sync.RWMutex
-	MABGamma          float64       // No reset
-	MABEta            float64       // No reset
-	MABRound          int           // How many MAB choices have been made. No reset
-	MABExp31Round     int           // How many rounds of Exp3.1. No reset
-	MABExp31Threshold float64       // Threshold based on Round. No sync
-	MABGLC            []rpctype.GLC // {Generate, Mutate, Triage}. Used for stationary bandit
+	MABGamma          float64   // No reset
+	MABEta            float64   // No reset
+	MABRound          int       // How many MAB choices have been made. No reset
+	MABExp31Round     int       // How many rounds of Exp3.1. No reset
+	MABExp31Threshold float64   // Threshold based on Round. No sync
+	MABGLC            []glc.GLC // {Generate, Mutate, Triage}. Used for stationary bandit
 	MABMaxLoss        float64
 	MABMinLoss        float64
 	MABMaxGain        float64
@@ -32,7 +33,7 @@ type MABGMTStatus struct {
 	MABWindowGain     []float64
 	MABWindowLoss     []float64
 	MABWindowCost     []float64
-	MABTriageInfo     map[hash.Sig]*rpctype.TriageInfo
+	MABTriageInfo     map[hash.Sig]*glc.TriageInfo
 }
 
 func MinMax(arr []float64) (float64, float64) {
@@ -121,17 +122,17 @@ func (fuzzer *Fuzzer) MABReset() {
 	fuzzer.MABMaxCost = 0.0
 	fuzzer.MABMinCost = math.Inf(0)
 	// Don't reset MABGLC[4] for Nael's algorithm
-	fuzzer.MABGLC.NormalizedGenerate = rpctype.GLC{}
-	fuzzer.MABGLC.NormalizedMutate = rpctype.GLC{}
-	fuzzer.MABGLC.NormalizedTriage = rpctype.GLC{}
-	fuzzer.MABGLC.NaelAll = rpctype.GLC{}
+	fuzzer.MABGLC.NormalizedGenerate = glc.GLC{}
+	fuzzer.MABGLC.NormalizedMutate = glc.GLC{}
+	fuzzer.MABGLC.NormalizedTriage = glc.GLC{}
+	fuzzer.MABGLC.NaelAll = glc.GLC{}
 	// These are for normalization only. Should reset upon Exp3.1 round?
 	fuzzer.MABWindowGain = fuzzer.MABWindowGain[:0]
 	fuzzer.MABWindowLoss = fuzzer.MABWindowLoss[:0]
 	fuzzer.MABWindowCost = fuzzer.MABWindowCost[:0]
 }
 
-func (fuzzer *Fuzzer) __MABNormalizeNael(gain float64, cost float64, glcRaw *rpctype.GLC) float64 {
+func (fuzzer *Fuzzer) __MABNormalizeNael(gain float64, cost float64, glcRaw *glc.GLC) float64 {
 	g := 0.0
 	if glcRaw.TotalGain > 0 {
 		g = gain*(glcRaw.TotalCost/glcRaw.TotalGain) - cost
@@ -173,7 +174,7 @@ func ZLogistic(x float64, n int, sum float64, sum2 float64, offset float64) (flo
 	return ret, mean, std
 }
 
-func (fuzzer *Fuzzer) __MABNormalizeGLC(gain float64, glcNael *rpctype.GLC) float64 {
+func (fuzzer *Fuzzer) __MABNormalizeGLC(gain float64, glcNael *glc.GLC) float64 {
 	x := 0.0
 	x_mean, x_std := 0.0, 0.0
 	offset := 0.0
@@ -210,10 +211,10 @@ func (fuzzer *Fuzzer) MABIncrementCorpusMutateCount(idx int, count int) {
 	}
 	fuzzer.MABMu.Lock()
 	defer fuzzer.MABMu.Unlock()
-	fuzzer.corpus[idx].MABMutateCount += count
+	fuzzer.corpus[idx].CorpusGLC.MutateCount += count
 	if fuzzer.fuzzerConfig.MABVerbose {
 		sig := hash.Hash(fuzzer.corpus[idx].Serialize())
-		fuzzer.writeLog("- Mutate Count %v: %v, +%v, %v\n", idx, sig.String(), count, fuzzer.corpus[idx].MABMutateCount)
+		fuzzer.writeLog("- Mutate Count %v: %v, +%v, %v\n", idx, sig.String(), count, fuzzer.corpus[idx].CorpusGLC.MutateCount)
 	}
 }
 
@@ -224,9 +225,9 @@ func (fuzzer *Fuzzer) MABUpdateCorpusWeight(pidx int, x float64) {
 	// Normalize
 	// Update gain/loss
 	// if fuzzer.fuzzerConfig.MABSeedSelection == "Exp3-Gain" {
-	// 	fuzzer.corpus[pidx].MABMutateGainNormOrig += x / pr[pidx] / float64(K)
+	// 	fuzzer.corpus[pidx].CorpusGLC.MutateGainNormOrig += x / pr[pidx] / float64(K)
 	// } else {
-	fuzzer.corpus[pidx].MABMutateGainNormOrig += x / (pr[pidx] + fuzzer.MABCorpusGamma)
+	fuzzer.corpus[pidx].CorpusGLC.MutateGainNormOrig += x / (pr[pidx] + fuzzer.MABCorpusGamma)
 	// }
 	// Update corpus selection weight
 	MABWeightThresholdMax := float64(math.Exp(64))
@@ -239,7 +240,7 @@ func (fuzzer *Fuzzer) MABUpdateCorpusWeight(pidx int, x float64) {
 		}
 	*/
 	prio := 1.0
-	prio = math.Exp(eta * fuzzer.corpus[pidx].MABMutateGainNormOrig)
+	prio = math.Exp(eta * fuzzer.corpus[pidx].CorpusGLC.MutateGainNormOrig)
 	if prio > MABWeightThresholdMax {
 		prio = MABWeightThresholdMax
 	}
@@ -247,7 +248,7 @@ func (fuzzer *Fuzzer) MABUpdateCorpusWeight(pidx int, x float64) {
 		prio = MABWeightThresholdMin
 	}
 	if fuzzer.fuzzerConfig.MABVerbose {
-		fuzzer.writeLog("- MAB Corpus %v, %v: %v -> %v\n", pidx, fuzzer.corpus[pidx].MABMutateGainNormOrig, fuzzer.corpusPrios[pidx], prio)
+		fuzzer.writeLog("- MAB Corpus %v, %v: %v -> %v\n", pidx, fuzzer.corpus[pidx].CorpusGLC.MutateGainNormOrig, fuzzer.corpusPrios[pidx], prio)
 	}
 	fuzzer.corpusPrios[pidx] = prio
 	// Normalize prios. Handle explicit exploration here
@@ -295,13 +296,13 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 		// fuzzer.MABUpdateWindow(_gain, 0.0, 0.0)
 		// Record triage cost
 		if _r.success && pidx >= 0 && pidx < len(fuzzer.corpus) {
-			fuzzer.corpus[pidx].MABTriageGainNorm = _gain
-			fuzzer.corpus[pidx].MABVerifyGain = _r.verifyGainRaw
-			fuzzer.corpus[pidx].MABMinimizeGain = _r.minimizeGainRaw
-			fuzzer.corpus[pidx].MABVerifyCost = cost_ver
-			fuzzer.corpus[pidx].MABMinimizeCost = cost_min
-			fuzzer.corpus[pidx].MABMinimizeTimeSave = time_save
-			fuzzer.corpus[pidx].MABCostBeforeMinimize = cost_before_min
+			fuzzer.corpus[pidx].CorpusGLC.TriageGainNorm = _gain
+			fuzzer.corpus[pidx].CorpusGLC.VerifyGain = _r.verifyGainRaw
+			fuzzer.corpus[pidx].CorpusGLC.MinimizeGain = _r.minimizeGainRaw
+			fuzzer.corpus[pidx].CorpusGLC.VerifyCost = cost_ver
+			fuzzer.corpus[pidx].CorpusGLC.MinimizeCost = cost_min
+			fuzzer.corpus[pidx].CorpusGLC.MinimizeTimeSave = time_save
+			fuzzer.corpus[pidx].CorpusGLC.CostBeforeMinimize = cost_before_min
 			// Mark for update
 			fuzzer.MABCorpusUpdate[pidx] = 1
 		}
@@ -334,17 +335,17 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 			return
 		}
 		if fuzzer.fuzzerConfig.MABAlgorithm != "N/A" {
-			mutate_cnt := fuzzer.corpus[pidx].MABMutateCount
-			cost_ver := fuzzer.corpus[pidx].MABVerifyCost
-			cost_min := fuzzer.corpus[pidx].MABMinimizeCost
-			gain_min := fuzzer.corpus[pidx].MABMinimizeGain
-			gain_ver := fuzzer.corpus[pidx].MABVerifyGain
-			gain_mut_cur := fuzzer.corpus[pidx].MABMutateGain + gain // Current total raw gain
-			cost_mut_cur := fuzzer.corpus[pidx].MABMutateCost + cost // Current total raw cost of mutation
-			n_mut_prev := fuzzer.corpus[pidx].MABMutateGainNorm      // Prev Nael-normalized gain for mutation
-			n_tri_prev := fuzzer.corpus[pidx].MABTriageGainNorm      // Prev Nael-normalized cost for mutation
-			// cost_mut_time_save := float64(mutate_cnt)*fuzzer.corpus[pidx].MABCostBeforeMinimize - cost_mut_cur
-			cost_mut_time_save := float64(mutate_cnt) * fuzzer.corpus[pidx].MABMinimizeTimeSave
+			mutate_cnt := fuzzer.corpus[pidx].CorpusGLC.MutateCount
+			cost_ver := fuzzer.corpus[pidx].CorpusGLC.VerifyCost
+			cost_min := fuzzer.corpus[pidx].CorpusGLC.MinimizeCost
+			gain_min := fuzzer.corpus[pidx].CorpusGLC.MinimizeGain
+			gain_ver := fuzzer.corpus[pidx].CorpusGLC.VerifyGain
+			gain_mut_cur := fuzzer.corpus[pidx].CorpusGLC.MutateGain + gain // Current total raw gain
+			cost_mut_cur := fuzzer.corpus[pidx].CorpusGLC.MutateCost + cost // Current total raw cost of mutation
+			n_mut_prev := fuzzer.corpus[pidx].CorpusGLC.MutateGainNorm      // Prev Nael-normalized gain for mutation
+			n_tri_prev := fuzzer.corpus[pidx].CorpusGLC.TriageGainNorm      // Prev Nael-normalized cost for mutation
+			// cost_mut_time_save := float64(mutate_cnt)*fuzzer.corpus[pidx].CorpusGLC.CostBeforeMinimize - cost_mut_cur
+			cost_mut_time_save := float64(mutate_cnt) * fuzzer.corpus[pidx].CorpusGLC.MinimizeTimeSave
 			if cost_mut_cur+cost_ver == 0.0 {
 				fuzzer.writeLog("- MAB Error: cost_ver = %v, cost_mut = %v\n", cost_ver, cost_mut_cur)
 				fuzzer.MABGLC.RawAll.Update(gain, cost)
@@ -355,14 +356,14 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 			// Minimize
 			n_min_cur := fuzzer.MABNormalizeNael(gain_min, 0.0)
 			if fuzzer.fuzzerConfig.MABVerbose {
-				// fuzzer.writeLog("- MAB Assoc Minimize Gain %v: %v * %v - (%v + %v) = %v\n", mutate_cnt, mutate_cnt, fuzzer.corpus[pidx].MABCostBeforeMinimize, fuzzer.corpus[pidx].MABMutateCost, cost, cost_mut_time_save)
-				fuzzer.writeLog("- MAB Assoc Minimize Gain %v: %v + %v * %v = %v\n", mutate_cnt, n_min_cur, mutate_cnt, fuzzer.corpus[pidx].MABMinimizeTimeSave, n_min_cur+cost_mut_time_save)
+				// fuzzer.writeLog("- MAB Assoc Minimize Gain %v: %v * %v - (%v + %v) = %v\n", mutate_cnt, mutate_cnt, fuzzer.corpus[pidx].CorpusGLC.CostBeforeMinimize, fuzzer.corpus[pidx].CorpusGLC.MutateCost, cost, cost_mut_time_save)
+				fuzzer.writeLog("- MAB Assoc Minimize Gain %v: %v + %v * %v = %v\n", mutate_cnt, n_min_cur, mutate_cnt, fuzzer.corpus[pidx].CorpusGLC.MinimizeTimeSave, n_min_cur+cost_mut_time_save)
 			}
 			n_min_cur = n_min_cur + cost_mut_time_save
 			// Stablize
 			n_ver_cur := gain_mut_cur*cost_ver/(cost_mut_cur+cost_ver) + gain_ver
 			if fuzzer.fuzzerConfig.MABVerbose {
-				fuzzer.writeLog("- MAB Assoc Verify Gain %v: (%v + %v) * %v / %v + %v = %v\n", mutate_cnt, fuzzer.corpus[pidx].MABMutateGain, gain, cost_ver, cost_mut_cur+cost_ver, gain_ver, n_ver_cur)
+				fuzzer.writeLog("- MAB Assoc Verify Gain %v: (%v + %v) * %v / %v + %v = %v\n", mutate_cnt, fuzzer.corpus[pidx].CorpusGLC.MutateGain, gain, cost_ver, cost_mut_cur+cost_ver, gain_ver, n_ver_cur)
 			}
 			n_ver_cur = fuzzer.MABNormalizeNael(n_ver_cur, 0.0)
 			// Triage
@@ -373,7 +374,7 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 			// Mutation
 			n_mut_cur := gain_mut_cur * cost_mut_cur / (cost_mut_cur + cost_ver)
 			if fuzzer.fuzzerConfig.MABVerbose {
-				fuzzer.writeLog("- MAB Assoc Mutate Gain %v: (%v + %v) * (%v + %v) / %v = %v\n", mutate_cnt, fuzzer.corpus[pidx].MABMutateGain, gain, fuzzer.corpus[pidx].MABMutateCost, cost, cost_mut_cur+cost_ver, n_mut_cur)
+				fuzzer.writeLog("- MAB Assoc Mutate Gain %v: (%v + %v) * (%v + %v) / %v = %v\n", mutate_cnt, fuzzer.corpus[pidx].CorpusGLC.MutateGain, gain, fuzzer.corpus[pidx].CorpusGLC.MutateCost, cost, cost_mut_cur+cost_ver, n_mut_cur)
 			}
 			n_mut_cur = fuzzer.MABNormalizeNael(n_mut_cur, cost_mut_cur)
 			// Compute x
@@ -392,10 +393,10 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 			fuzzer.MABGLC.NormalizedMutate.Update(_x_mut, 0.0)
 			fuzzer.MABGLC.NormalizedTriage.Update(_x_tri, 0.0)
 			// Update program stat
-			fuzzer.corpus[pidx].MABMutateGain = gain_mut_cur
-			fuzzer.corpus[pidx].MABMutateCost = cost_mut_cur
-			fuzzer.corpus[pidx].MABMutateGainNorm = n_mut_cur
-			fuzzer.corpus[pidx].MABTriageGainNorm = n_tri_cur
+			fuzzer.corpus[pidx].CorpusGLC.MutateGain = gain_mut_cur
+			fuzzer.corpus[pidx].CorpusGLC.MutateCost = cost_mut_cur
+			fuzzer.corpus[pidx].CorpusGLC.MutateGainNorm = n_mut_cur
+			fuzzer.corpus[pidx].CorpusGLC.TriageGainNorm = n_tri_cur
 			// Don't use associated gain for normalization
 			n_norm := fuzzer.MABNormalizeNael(gain, cost)
 			fuzzer.MABGLC.NaelAll.Update(n_norm, 0.0)
@@ -409,10 +410,10 @@ func (fuzzer *Fuzzer) MABUpdateWeightUnstableAssocNael(itemType int, result inte
 			fuzzer.MABUpdateCorpusWeight(pidx, x_norm)
 			fuzzer.MABGLC.NaelMutate.Update(n_norm1, 0.0)
 		}
-		fuzzer.corpus[pidx].MABMutateCount += 1 // With MAB, always one mutation
+		fuzzer.corpus[pidx].CorpusGLC.MutateCount += 1 // With MAB, always one mutation
 		if fuzzer.fuzzerConfig.MABVerbose {
 			__sig := hash.Hash(fuzzer.corpus[pidx].Serialize())
-			fuzzer.writeLog("- Mutate Count %v: %v, +1, %v\n", pidx, __sig.String(), fuzzer.corpus[pidx].MABMutateCount)
+			fuzzer.writeLog("- Mutate Count %v: %v, +1, %v\n", pidx, __sig.String(), fuzzer.corpus[pidx].CorpusGLC.MutateCount)
 		}
 		fuzzer.MABGLC.RawAll.Update(gain, cost)
 		fuzzer.MABGLC.RawMutate.Update(gain, cost)
@@ -527,29 +528,31 @@ func (fuzzer *Fuzzer) getMABStatus() (rpctype.RPCMABStatus, int64) {
 		Round:      fuzzer.MABRound,
 		Exp31Round: fuzzer.MABExp31Round,
 		MABGLC:     fuzzer.MABGLC,
-		CorpusGLC:  make(map[hash.Sig]rpctype.CorpusGLC),
+		CorpusGLC:  make(map[hash.Sig]glc.CorpusGLC),
 		TriageInfo: fuzzer.MABTriageInfo,
 	}
 	for pidx, _ := range fuzzer.MABCorpusUpdate {
 		if pidx >= 0 && pidx < len(fuzzer.corpus) {
 			p := fuzzer.corpus[pidx]
 			sig := hash.Hash(p.Serialize())
-			fuzzer_status.CorpusGLC[sig] = rpctype.CorpusGLC{
-				Smashed:            p.Smashed,
-				MutateCount:        p.MABMutateCount,
-				VerifyGain:         p.MABVerifyGain,
-				VerifyCost:         p.MABVerifyCost,
-				MinimizeGain:       p.MABMinimizeGain,
-				MinimizeCost:       p.MABMinimizeCost,
-				MinimizeTimeSave:   p.MABMinimizeTimeSave,
-				MutateGain:         p.MABMutateGain,
-				MutateCost:         p.MABMutateCost,
-				CostBeforeMinimize: p.MABCostBeforeMinimize,
-				MutateGainNorm:     p.MABMutateGainNorm,
-				MutateGainNormOrig: p.MABMutateGainNormOrig,
-				TriageGainNorm:     p.MABTriageGainNorm,
-			}
-			// fuzzer.writeLog("- MAB Corpus Sync %v, %v > %v,%v,%v,%v,%v\n", sig.String(), p.MABMutateCount, p.MABMutateGain, p.MABMutateCost, p.MABVerifyCost, p.MABMinimizeCost, p.MABMinimizeTimeSave)
+			fuzzer_status.CorpusGLC[sig] = p.CorpusGLC
+			/*
+				fuzzer_status.CorpusGLC[sig] = glc.CorpusGLC{
+					Smashed:            p.Smashed,
+					MutateCount:        p.MABMutateCount,
+					VerifyGain:         p.MABVerifyGain,
+					VerifyCost:         p.MABVerifyCost,
+					MinimizeGain:       p.MABMinimizeGain,
+					MinimizeCost:       p.MABMinimizeCost,
+					MinimizeTimeSave:   p.MABMinimizeTimeSave,
+					MutateGain:         p.MABMutateGain,
+					MutateCost:         p.MABMutateCost,
+					CostBeforeMinimize: p.MABCostBeforeMinimize,
+					MutateGainNorm:     p.MABMutateGainNorm,
+					MutateGainNormOrig: p.MABMutateGainNormOrig,
+					TriageGainNorm:     p.MABTriageGainNorm,
+				}
+			*/
 		}
 	}
 	fuzzer.MABCorpusUpdate = make(map[int]int) // Clear map
@@ -572,7 +575,7 @@ func (fuzzer *Fuzzer) writeMABStatus(manager_status rpctype.RPCMABStatus) int64 
 				continue
 			}
 			if _, ok := fuzzer.MABTriageInfo[sig]; !ok {
-				fuzzer.MABTriageInfo[sig] = &rpctype.TriageInfo{}
+				fuzzer.MABTriageInfo[sig] = &glc.TriageInfo{}
 			}
 			fuzzer.MABTriageInfo[sig].Source = v.Source
 			fuzzer.MABTriageInfo[sig].SourceCost = v.SourceCost
@@ -594,20 +597,22 @@ func (fuzzer *Fuzzer) writeMABStatus(manager_status rpctype.RPCMABStatus) int64 
 		pidx := -1
 		ok := false
 		if pidx, ok = fuzzer.corpusHashes[sig]; ok && pidx >= 0 && pidx < len(fuzzer.corpus) {
-			fuzzer.corpus[pidx].Smashed = v.Smashed
-			fuzzer.corpus[pidx].MABVerifyGain = v.VerifyGain
-			fuzzer.corpus[pidx].MABVerifyCost = v.VerifyCost
-			fuzzer.corpus[pidx].MABMinimizeGain = v.MinimizeGain
-			fuzzer.corpus[pidx].MABMinimizeCost = v.MinimizeCost
-			fuzzer.corpus[pidx].MABMinimizeTimeSave = v.MinimizeTimeSave
-			fuzzer.corpus[pidx].MABMutateCost = v.MutateCost
-			fuzzer.corpus[pidx].MABMutateGain = v.MutateGain
-			fuzzer.corpus[pidx].MABMutateGainNorm = v.MutateGainNorm
-			fuzzer.corpus[pidx].MABMutateGainNormOrig = v.MutateGainNormOrig
-			fuzzer.corpus[pidx].MABTriageGainNorm = v.TriageGainNorm
-			fuzzer.corpus[pidx].MABCostBeforeMinimize = v.CostBeforeMinimize
-			// fuzzer.writeLog("- MAB Corpus Sync %v, %v, %v < %v,%v,%v,%v,%v\n", sig.String(), fuzzer.corpus[pidx].MABMutateCount, v.MutateCount, v.MutateGain, v.MutateCost, v.VerifyCost, v.MinimizeCost, v.MinimizeTimeSave)
-			fuzzer.corpus[pidx].MABMutateCount = v.MutateCount
+			fuzzer.corpus[pidx].CorpusGLC = v
+			/*
+				fuzzer.corpus[pidx].Smashed = v.Smashed
+				fuzzer.corpus[pidx].CorpusGLC.VerifyGain = v.VerifyGain
+				fuzzer.corpus[pidx].CorpusGLC.VerifyCost = v.VerifyCost
+				fuzzer.corpus[pidx].CorpusGLC.MinimizeGain = v.MinimizeGain
+				fuzzer.corpus[pidx].CorpusGLC.MinimizeCost = v.MinimizeCost
+				fuzzer.corpus[pidx].CorpusGLC.MinimizeTimeSave = v.MinimizeTimeSave
+				fuzzer.corpus[pidx].CorpusGLC.MutateCost = v.MutateCost
+				fuzzer.corpus[pidx].CorpusGLC.MutateGain = v.MutateGain
+				fuzzer.corpus[pidx].CorpusGLC.MutateGainNorm = v.MutateGainNorm
+				fuzzer.corpus[pidx].CorpusGLC.MutateGainNormOrig = v.MutateGainNormOrig
+				fuzzer.corpus[pidx].CorpusGLC.TriageGainNorm = v.TriageGainNorm
+				fuzzer.corpus[pidx].CorpusGLC.CostBeforeMinimize = v.CostBeforeMinimize
+				fuzzer.corpus[pidx].CorpusGLC.MutateCount = v.MutateCount
+			*/
 		}
 	}
 	t := time.Now().UnixNano() - ts0

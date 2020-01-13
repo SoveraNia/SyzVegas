@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/syzkaller/pkg/cover"
+	"github.com/google/syzkaller/pkg/glc"
 	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/log"
 	"github.com/google/syzkaller/pkg/rpctype"
@@ -42,14 +43,14 @@ type RPCServer struct {
 
 	MABRound      int
 	MABExp31Round int
-	MABGLC        rpctype.MABGLC
+	MABGLC        glc.MABGLC
 
 	MABTriageCount      int
 	MABTriageCostBefore float64
 	MABTriageCostAfter  float64
 
-	CorpusGLC  map[hash.Sig]rpctype.CorpusGLC
-	TriageInfo map[hash.Sig]*rpctype.TriageInfo
+	CorpusGLC  map[hash.Sig]glc.CorpusGLC
+	TriageInfo map[hash.Sig]*glc.TriageInfo
 }
 
 type Fuzzer struct {
@@ -84,10 +85,10 @@ func startRPCServer(mgr *Manager) (int, error) {
 		fuzzers:         make(map[string]*Fuzzer),
 		rnd:             rand.New(rand.NewSource(time.Now().UnixNano())),
 		MABRound:        0,
-		MABGLC:          rpctype.MABGLC{},
-		CorpusGLC:       make(map[hash.Sig]rpctype.CorpusGLC),
+		MABGLC:          glc.MABGLC{},
+		CorpusGLC:       make(map[hash.Sig]glc.CorpusGLC),
 		triageWorks:     make(map[hash.Sig]map[int]rpctype.RPCTriage),
-		TriageInfo:      make(map[hash.Sig]*rpctype.TriageInfo),
+		TriageInfo:      make(map[hash.Sig]*glc.TriageInfo),
 	}
 	serv.batchSize = 5
 	if serv.batchSize < mgr.cfg.Procs {
@@ -252,7 +253,7 @@ func (serv *RPCServer) SyncMABStatus(a *rpctype.RPCMABStatus, r *rpctype.RPCMABS
 				delete(serv.TriageInfo, sig)
 				log.Logf(4, "Deleting completed triage %v", sig.String())
 			} else {
-				serv.TriageInfo[sig] = &rpctype.TriageInfo{
+				serv.TriageInfo[sig] = &glc.TriageInfo{
 					Source:           v.Source,
 					SourceCost:       v.SourceCost,
 					TriageGain:       v.TriageGain,
@@ -272,11 +273,11 @@ func (serv *RPCServer) SyncMABStatus(a *rpctype.RPCMABStatus, r *rpctype.RPCMABS
 		r.Round = serv.MABRound
 		r.Exp31Round = serv.MABExp31Round
 		r.MABGLC = serv.MABGLC
-		r.CorpusGLC = make(map[hash.Sig]rpctype.CorpusGLC)
+		r.CorpusGLC = make(map[hash.Sig]glc.CorpusGLC)
 		for sig, v := range serv.CorpusGLC {
 			r.CorpusGLC[sig] = v
 		}
-		r.TriageInfo = make(map[hash.Sig]*rpctype.TriageInfo)
+		r.TriageInfo = make(map[hash.Sig]*glc.TriageInfo)
 		for sig, v := range serv.TriageInfo {
 			r.TriageInfo[sig] = v
 		}
@@ -378,7 +379,7 @@ func (serv *RPCServer) Poll(a *rpctype.PollArgs, r *rpctype.PollRes) error {
 			sig := hash.Hash(f.inputs[last].Prog)
 			if r.CorpusGLC == nil {
 				log.Logf(0, "- WTF. nil map detected. Creating.\n")
-				r.CorpusGLC = make(map[hash.Sig]rpctype.CorpusGLC)
+				r.CorpusGLC = make(map[hash.Sig]glc.CorpusGLC)
 			}
 			if v, ok := serv.CorpusGLC[sig]; ok {
 				r.CorpusGLC[sig] = v

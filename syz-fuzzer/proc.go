@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/syzkaller/pkg/cover"
+	"github.com/google/syzkaller/pkg/glc"
 	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/ipc"
 	"github.com/google/syzkaller/pkg/log"
@@ -414,11 +415,11 @@ func (proc *Proc) triageInput(item *WorkTriage) TriageResult {
 			Flags:      int(item.flags),
 			Info:       item.info,
 			Source:     item.p.Source,
-			SourceCost: item.p.MABCost,
+			SourceCost: item.p.CorpusGLC.Cost,
 		})
 	}
 	source := item.p.Source
-	sourceCost := item.p.MABCost
+	sourceCost := item.p.CorpusGLC.Cost
 	if _, ok := proc.fuzzer.MABTriageInfo[source_sig]; ok {
 		source = proc.fuzzer.MABTriageInfo[source_sig].Source
 		sourceCost = proc.fuzzer.MABTriageInfo[source_sig].SourceCost
@@ -552,7 +553,7 @@ func (proc *Proc) triageInput(item *WorkTriage) TriageResult {
 		Prog:   data,
 		Signal: inputSignal.Serialize(),
 		Cover:  inputCover.Serialize(),
-		CorpusGLC: rpctype.CorpusGLC{
+		CorpusGLC: glc.CorpusGLC{
 			VerifyGain:       0.0,
 			VerifyCost:       ret.verifyTime,
 			MinimizeGain:     minimizeGainRaw,
@@ -641,7 +642,7 @@ func (proc *Proc) smashInput(item *WorkSmash) ExecResult {
 	// Mark for update if we're syncing smash
 	if pidx > 0 && proc.fuzzer.fuzzerConfig.syncSmash {
 		proc.fuzzer.MABCorpusUpdate[pidx] = 1
-		item.p.Smashed = true
+		item.p.CorpusGLC.Smashed = true
 		proc.fuzzer.smashesFinished = append(proc.fuzzer.smashesFinished, sig)
 	}
 
@@ -711,7 +712,7 @@ func (proc *Proc) execute(execOpts *ipc.ExecOpts, p *prog.Prog, flags ProgTypes,
 	ts_bgn := time.Now().UnixNano()
 	info, _time := proc.executeRaw(execOpts, p, stat)
 	ret.time += _time
-	p.MABCost = _time
+	p.CorpusGLC.Cost = _time
 	calls, extra, gainRaw := proc.fuzzer.checkNewSignal(p, info)
 	ts_end := time.Now().UnixNano()
 	for _, callIndex := range calls {
@@ -748,7 +749,7 @@ func (proc *Proc) enqueueCallTriage(p *prog.Prog, flags ProgTypes, callIndex int
 			Flags:      int(flags),
 			Info:       info,
 			Source:     p.Source,
-			SourceCost: p.MABCost,
+			SourceCost: p.CorpusGLC.Cost,
 		})
 	}
 }

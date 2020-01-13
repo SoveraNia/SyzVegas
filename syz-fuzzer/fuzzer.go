@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/syzkaller/pkg/csource"
+	"github.com/google/syzkaller/pkg/glc"
 	"github.com/google/syzkaller/pkg/hash"
 	"github.com/google/syzkaller/pkg/host"
 	"github.com/google/syzkaller/pkg/ipc"
@@ -83,13 +84,13 @@ type Fuzzer struct {
 	MABCorpusGamma float64
 	MABCorpusEta   float64
 
-	MABRound          int            // How many MAB choices have been made. No reset
-	MABExp31Round     int            // How many rounds of Exp3.1. No reset
-	MABExp31Threshold float64        // Threshold based on Round. No sync
-	MABGLC            rpctype.MABGLC // {Generate, Mutate, Triage}. Used for stationary bandit
+	MABRound          int        // How many MAB choices have been made. No reset
+	MABExp31Round     int        // How many rounds of Exp3.1. No reset
+	MABExp31Threshold float64    // Threshold based on Round. No sync
+	MABGLC            glc.MABGLC // {Generate, Mutate, Triage}. Used for stationary bandit
 
 	MABCorpusUpdate map[int]int
-	MABTriageInfo   map[hash.Sig]*rpctype.TriageInfo
+	MABTriageInfo   map[hash.Sig]*glc.TriageInfo
 
 	MABGMTStatus
 }
@@ -392,14 +393,14 @@ func main() {
 		loggedPrograms:    make(map[hash.Sig]int),
 		feedback:          *flagFeedback,
 		fuzzerConfig:      fuzzerConfig,
-		MABGLC:            rpctype.MABGLC{},
+		MABGLC:            glc.MABGLC{},
 		MABGamma:          *flagFuzzerConfigMABGamma,
 		MABEta:            *flagFuzzerConfigMABEta,
 		MABCorpusGamma:    *flagFuzzerConfigMABCorpusGamma,
 		MABCorpusEta:      *flagFuzzerConfigMABCorpusEta,
 		MABRound:          0,
 		MABExp31Round:     1,
-		MABTriageInfo:     make(map[hash.Sig]*rpctype.TriageInfo),
+		MABTriageInfo:     make(map[hash.Sig]*glc.TriageInfo),
 	}
 	fuzzer.workQueue.fuzzer = fuzzer
 	// Initialize params for Exp31
@@ -601,8 +602,8 @@ func (fuzzer *Fuzzer) poll(needCandidates bool, needTriages bool, stats map[stri
 
 	r := &rpctype.PollRes{
 		RPCMABStatus: rpctype.RPCMABStatus{
-			CorpusGLC:  make(map[hash.Sig]rpctype.CorpusGLC),
-			TriageInfo: make(map[hash.Sig]*rpctype.TriageInfo),
+			// CorpusGLC:  make(map[hash.Sig]glc.CorpusGLC),
+			// TriageInfo: make(map[hash.Sig]*glc.TriageInfo),
 		},
 	}
 	if err := fuzzer.manager.Call("Manager.Poll", a, r); err != nil {
@@ -663,7 +664,7 @@ func (fuzzer *Fuzzer) poll(needCandidates bool, needTriages bool, stats map[stri
 					info:  tri.Info,
 					flags: ProgTypes(tri.Flags),
 				})
-				fuzzer.writeLog("- Adding triage work from manager Prog=%v (%v, %v), CallIndex=%v #Sig=%v\n", tri.Sig.String(), p.MABCost, p.MABMutateCount, tri.CallIndex, len(tri.Info.Signal))
+				fuzzer.writeLog("- Adding triage work from manager Prog=%v (%v, %v), CallIndex=%v #Sig=%v\n", tri.Sig.String(), p.CorpusGLC.Cost, p.CorpusGLC.MutateCount, tri.CallIndex, len(tri.Info.Signal))
 			}
 		}
 	}
@@ -695,7 +696,7 @@ func (fuzzer *Fuzzer) newTriage(inp rpctype.RPCTriage) {
 	// Triage Info for corpus target
 	if fuzzer.fuzzerConfig.MABTargetCorpus {
 		if _, ok := fuzzer.MABTriageInfo[inp.Sig]; !ok {
-			fuzzer.MABTriageInfo[inp.Sig] = &rpctype.TriageInfo{}
+			fuzzer.MABTriageInfo[inp.Sig] = &glc.TriageInfo{}
 		}
 		fuzzer.MABTriageInfo[inp.Sig].TriageTotal += 1
 		fuzzer.MABTriageInfo[inp.Sig].Source = inp.Source
@@ -738,28 +739,33 @@ func (fuzzer *Fuzzer) addInputFromAnotherFuzzer(inp rpctype.RPCInput) {
 		log.Fatalf("failed to deserialize prog from another fuzzer: %v", err)
 	}
 	// Sync MAB status
-	p.MABMutateCount = inp.MutateCount
-	p.MABVerifyGain = inp.VerifyGain
-	p.MABVerifyCost = inp.VerifyCost
-	p.MABMinimizeGain = inp.MinimizeGain
-	p.MABMinimizeCost = inp.MinimizeCost
-	p.MABMinimizeTimeSave = inp.MinimizeTimeSave
-	p.MABMinimizeTimeSave = inp.MinimizeTimeSave
-	p.MABMutateCost = inp.MutateCost
-	p.MABMutateGain = inp.MutateGain
-	p.MABMutateGainNorm = inp.MutateGainNorm
-	p.MABTriageGainNorm = inp.TriageGainNorm
-	p.MABCostBeforeMinimize = inp.CostBeforeMinimize
-	p.Smashed = inp.Smashed
+	p.CorpusGLC = inp.CorpusGLC
+	/*
+		p.MABMutateCount = inp.MutateCount
+		p.MABVerifyGain = inp.VerifyGain
+		p.MABVerifyCost = inp.VerifyCost
+		p.MABMinimizeGain = inp.MinimizeGain
+		p.MABMinimizeCost = inp.MinimizeCost
+		p.MABMinimizeTimeSave = inp.MinimizeTimeSave
+		p.MABMutateCost = inp.MutateCost
+		p.MABMutateGain = inp.MutateGain
+		p.MABMutateGainNorm = inp.MutateGainNorm
+		p.MABMutateGainNormOrig = inp.MutateGainNormOrig
+		p.MABTriageGainNorm = inp.TriageGainNorm
+		p.MABCostBeforeMinimize = inp.CostBeforeMinimize
+		p.Smashed = inp.Smashed
+	*/
 
 	sig := hash.Hash(inp.Prog)
 	sign := inp.Signal.Deserialize()
-	fuzzer.writeLog("- addInputFromAnotherFuzzer: %v, %v, %v\n", sig.String(), p.Smashed, p.MABMutateCount)
+	if fuzzer.fuzzerConfig.MABVerbose {
+		fuzzer.writeLog("- addInputFromAnotherFuzzer: %v, %+v\n", sig.String(), p.CorpusGLC)
+	}
 	fuzzer.addInputToCorpus(p, sign, sig)
 
-	if fuzzer.fuzzerConfig.syncSmash && (!p.Smashed || p.MABMutateCount-fuzzer.fuzzerConfig.smashWeight < 0) {
+	if fuzzer.fuzzerConfig.syncSmash && (!p.CorpusGLC.Smashed || p.CorpusGLC.MutateCount-fuzzer.fuzzerConfig.smashWeight < 0) {
 		// Add smashing work to workqueue
-		numSmashes := fuzzer.fuzzerConfig.smashWeight - p.MABMutateCount
+		numSmashes := fuzzer.fuzzerConfig.smashWeight - p.CorpusGLC.MutateCount
 		numMutates := fuzzer.fuzzerConfig.mutateWeight
 		for numSmashes > 0 {
 			n := numMutates
@@ -782,11 +788,11 @@ func (fuzzer *FuzzerSnapshot) chooseProgram(r *rand.Rand) (int, *prog.Prog) {
 	})
 	if fuzzer.fuzzerConfig.MABVerbose {
 		if len(fuzzer.corpusPrios) > 10 {
-			fmt.Fprintf(os.Stderr, "- Corpus Priority %v, %v...%v\n", fuzzer.corpusPrios[pidx], fuzzer.corpusPrios[:5], fuzzer.corpusPrios[(len(fuzzer.corpusPrios)-5):])
-			fmt.Fprintf(os.Stderr, "- Corpus Priority Sum %v, %v...%v, %v\n", fuzzer.corpusPriosSum[pidx], fuzzer.corpusPriosSum[:5], fuzzer.corpusPriosSum[(len(fuzzer.corpusPrios)-5):], fuzzer.sumPrios)
+			fmt.Printf("- Corpus Priority %v, %v...%v\n", fuzzer.corpusPrios[pidx], fuzzer.corpusPrios[:5], fuzzer.corpusPrios[(len(fuzzer.corpusPrios)-5):])
+			fmt.Printf("- Corpus Priority Sum %v, %v...%v, %v\n", fuzzer.corpusPriosSum[pidx], fuzzer.corpusPriosSum[:5], fuzzer.corpusPriosSum[(len(fuzzer.corpusPrios)-5):], fuzzer.sumPrios)
 		} else {
-			fmt.Fprintf(os.Stderr, "- Corpus Priority %v\n", fuzzer.corpusPrios)
-			fmt.Fprintf(os.Stderr, "- Corpus Priority Sum %v, %v\n", fuzzer.corpusPriosSum, fuzzer.sumPrios)
+			fmt.Printf("- Corpus Priority %v\n", fuzzer.corpusPrios)
+			fmt.Printf("- Corpus Priority Sum %v, %v\n", fuzzer.corpusPriosSum, fuzzer.sumPrios)
 		}
 	}
 	if pidx >= len(fuzzer.corpus) {
@@ -805,9 +811,8 @@ func (fuzzer *Fuzzer) addInputToCorpus(p *prog.Prog, sign signal.Signal, sig has
 		if sign.Empty() {
 			prio = 1.0
 		} else if strings.Contains(fuzzer.fuzzerConfig.MABSeedSelection, "Exp3") {
-			prio = math.Exp(fuzzer.MABCorpusEta * p.MABMutateGainNormOrig)
+			prio = math.Exp(fuzzer.MABCorpusEta * p.CorpusGLC.MutateGainNormOrig)
 		}
-		p.PrioBase = prio
 		fuzzer.corpus = append(fuzzer.corpus, p)
 		pidx = len(fuzzer.corpus) - 1
 		fuzzer.corpusHashes[sig] = pidx
