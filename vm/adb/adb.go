@@ -112,30 +112,30 @@ func (pool *Pool) Create(workdir string, index int) (vmimpl.Instance, error) {
 	}
 
 	time.Sleep(120 * time.Second)
-	log.Logf(0, "WTF 0")
+	log.Logf(0, "rm -Rf /data/local/tmp/syzkaller*")
 	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c rm -Rf /data/local/tmp/syzkaller*")
 	if _, err := inst.adb("shell", "su -c", "rm -Rf /data/local/tmp/syzkaller*"); err != nil {
 		return nil, err
 	}
-	log.Logf(0, "WTF 1")
-	inst.adb("shell", "su -c", "'chmod a+r /sys/kernel/debug/kcov'")
+	log.Logf(0, "chmod 666 /sys/kernel/debug/kcov")
+	inst.adb("shell", "su -c", "'chmod 666 /sys/kernel/debug/kcov'")
 	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c '/data/local/tmp/setup_syzkaller.sh'")
 	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'chmod a+r /sys/kernel/debug/kcov'");
-	log.Logf(0, "WTF 2")
+	log.Logf(0, "setenforce 0")
 	inst.adb("shell", "su -c", "setenforce 0")
 	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'setenforce 0'")
-	log.Logf(0, "WTF 3")
+	log.Logf(0, "echo 0 > /proc/sys/kernel/kptr_restrict")
 	inst.adb("shell", "su -c", "'echo 0 > /proc/sys/kernel/kptr_restrict'")
 	// osutil.Command(inst.adbBin, "-s", inst.device, "shell", "su -c 'echo 0 > /proc/sys/kernel/kptr_restrict'")
-	log.Logf(0, "WTF 4")
-	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu3/online'")
-	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu2/online'")
-	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu1/online'")
-	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu0/online'")
-	log.Logf(0, "WTF 5")
+	log.Logf(0, "echo 0 > /sys/devices/system/cpu/cpu7/online")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu7/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu6/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu5/online'")
+	inst.adb("shell", "su -c", "'echo 0 > /sys/devices/system/cpu/cpu4/online'")
+	log.Logf(0, "Done")
 
 	// Remove temp files from previous runs.
-	if _, err := inst.adb("shell", "rm -Rf /data/syzkaller*"); err != nil {
+	if _, err := inst.adb("shell", "rm -Rf /data/local/tmp/syzkaller*"); err != nil {
 		return nil, err
 	}
 	inst.adb("shell", "su -c", "echo 0 > /proc/sys/kernel/kptr_restrict")
@@ -380,7 +380,7 @@ func (inst *instance) Close() {
 }
 
 func (inst *instance) Copy(hostSrc string) (string, error) {
-	vmDst := filepath.Join("/data", filepath.Base(hostSrc))
+	vmDst := filepath.Join("/data/local/tmp", filepath.Base(hostSrc))
 	if _, err := inst.adb("push", hostSrc, vmDst); err != nil {
 		return "", err
 	}
@@ -408,7 +408,7 @@ func (inst *instance) Run(timeout time.Duration, stop <-chan bool, command strin
 	if inst.debug {
 		log.Logf(0, "starting: adb shell %v", command)
 	}
-	adb := osutil.Command(inst.adbBin, "-s", inst.device, "shell", "cd /data; "+command)
+	adb := osutil.Command(inst.adbBin, "-s", inst.device, "shell", "cd /data/local/tmp; "+command)
 	adb.Stdout = adbWpipe
 	adb.Stderr = adbWpipe
 	if err := adb.Start(); err != nil {
