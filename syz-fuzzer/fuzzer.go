@@ -551,6 +551,11 @@ func (fuzzer *Fuzzer) poll(needCandidates bool, needTriages bool, stats map[stri
 		ts1 := time.Now().UnixNano()
 		fuzzer.writeLog("- MAB Poll: %v\n", ts1-ts0)
 	}()
+	if fuzzer.fuzzerConfig.MABVerbose {
+		var m runtime.MemStats
+		runtime.ReadMemStats(&m)
+		fuzzer.writeLog("- Mem Alloc: %v TotalAlloc: %v Sys: %v NumGC: %v\n", m.Alloc/1024/1024, m.TotalAlloc/1024/1024, m.Sys/1024/1024, m.NumGC)
+	}
 	a := &rpctype.PollArgs{
 		Name:              fuzzer.name,
 		NeedCandidates:    needCandidates,
@@ -606,8 +611,14 @@ func (fuzzer *Fuzzer) poll(needCandidates bool, needTriages bool, stats map[stri
 			// TriageInfo: make(map[hash.Sig]*glc.TriageInfo),
 		},
 	}
+	if fuzzer.fuzzerConfig.MABVerbose {
+		fuzzer.writeLog("- %s\n", "Calling Manager")
+	}
 	if err := fuzzer.manager.Call("Manager.Poll", a, r); err != nil {
 		log.Fatalf("Manager.Poll call failed: %v", err)
+	}
+	if fuzzer.fuzzerConfig.MABVerbose {
+		fuzzer.writeLog("- %s\n", "Success")
 	}
 	maxSignal := r.MaxSignal.Deserialize()
 	log.Logf(1, "poll: candidates=%v inputs=%v signal=%v",

@@ -531,11 +531,23 @@ func (fuzzer *Fuzzer) getMABStatus() (rpctype.RPCMABStatus, int64) {
 		CorpusGLC:  make(map[hash.Sig]glc.CorpusGLC),
 		TriageInfo: fuzzer.MABTriageInfo,
 	}
+	const batchSize = 500
+	syncedCnt := 0
+	synced := make([]int, batchSize)
 	for pidx, _ := range fuzzer.MABCorpusUpdate {
+		// Avoid sending too much
+		if syncedCnt >= batchSize {
+			break
+		}
 		if pidx >= 0 && pidx < len(fuzzer.corpus) {
 			p := fuzzer.corpus[pidx]
 			sig := hash.Hash(p.Serialize())
 			fuzzer_status.CorpusGLC[sig] = p.CorpusGLC
+			if fuzzer.fuzzerConfig.MABVerbose {
+				fuzzer.writeLog("- Corpus Sync %v: %+v\n", pidx, p.CorpusGLC)
+			}
+			synced[syncedCnt] = pidx
+			syncedCnt += 1
 			/*
 				fuzzer_status.CorpusGLC[sig] = glc.CorpusGLC{
 					Smashed:            p.Smashed,
@@ -555,7 +567,16 @@ func (fuzzer *Fuzzer) getMABStatus() (rpctype.RPCMABStatus, int64) {
 			*/
 		}
 	}
-	fuzzer.MABCorpusUpdate = make(map[int]int) // Clear map
+	// fuzzer.MABCorpusUpdate = make(map[int]int) // Remove keys from map
+	for i := 0; i < syncedCnt; i++ {
+		spidx := synced[i]
+		if _, ok := fuzzer.MABCorpusUpdate[spidx]; ok {
+			delete(fuzzer.MABCorpusUpdate, spidx)
+		}
+	}
+	if fuzzer.fuzzerConfig.MABVerbose {
+		fuzzer.writeLog("- Corpus Sync Pending: %v, %+v\n", len(fuzzer.MABCorpusUpdate), fuzzer.MABCorpusUpdate)
+	}
 	t := time.Now().UnixNano() - ts0
 	return fuzzer_status, t
 }
