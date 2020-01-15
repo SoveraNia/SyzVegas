@@ -12,7 +12,8 @@ import simplejson as json
 # UCI device: 84B7N16219002600
 devices = {
 #    "84B7N16219002600": None,
-    "84B7N15A28012929": None
+#    "84B7N15A28012929": None
+     "8B6X146N1": None
 }
 workqueue = [];
 from python.utils import CUR_DIR, SYZKALLER_DIR, SHELL, getOpenPort, filterLog, setEnv
@@ -70,8 +71,8 @@ def runExperiment(exp_id=None, test_name=None, cfg_base="adb.cfg", dev_id="84B7N
 
     # Cleaning up
     SHELL("rm -fr %s/*" % cfg_data["workdir"], permissive=True)
-    SHELL("adb -s %s shell su -c rm /data/local/tmp/debug.log" % dev_id, permissive=True)
-    SHELL("adb -s %s shell su -c rm -fr /data/local/tmp/syzlog*" % dev_id, permissive=True)
+    SHELL("adb -s %s shell 'su -c \"rm /data/local/tmp/debug.log\"'" % dev_id, permissive=True)
+    SHELL("adb -s %s shell 'su -c \"rm -fr /data/local/tmp/syzlog*\"'" % dev_id, permissive=True)
     SHELL("adb -s %s shell mkdir /data/local/tmp/syzlog" % dev_id, permissive=True)
 
     # Run
