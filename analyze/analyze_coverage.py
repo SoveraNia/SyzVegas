@@ -134,14 +134,18 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
                 tmp[name0] = cliffsDelta(data[name0], data[name1], key="Time_Elapsed", value="Total_Coverage", bin_size=600)
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Cliff's Delta", outfile="coverage_cd_time.png", xunit=3600.0, nmarkers=12, xstep=4);
         # Average / median result
+        print("Median")
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0, nmarkers=12, xstep=4);
+            print(name, tmp[name][-1])
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=12, xstep=4);
+        print("Mean")
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600, median=False)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (# edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0, nmarkers=12, xstep=4);
+            print(name, tmp[name][-1])
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=12, xstep=4);
         #tmp = {}
         #for name in data:
         #    tmp[name] = averageData(data[name], key="Syscall_Count", value="Total_Coverage")

@@ -122,7 +122,7 @@ def buildCrashDb(datas):
         for csig in d:
           print(d[csig]["Description"])
           desc = d[csig]["Description"].strip('\n')
-          crash_dir = "crash-db/" + desc.replace(' ', '_').replace('\n', '_')
+          crash_dir = "crash-db/" + desc.replace(' ', '_').replace('\n', '_').replace(':', '').replace("'", '')
           if not desc in db:
               db[desc] = {
                   "Discover_Count": {},

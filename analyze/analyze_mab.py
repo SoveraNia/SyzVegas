@@ -71,7 +71,7 @@ def __processTest(test):
             status["ts"] = (ts_cur - ts_bgn) / 1000000000
             cur_ts = status["ts"]
             ret.append(copy.deepcopy(status))
-        elif line[0] == '-' and ("MAB Dequeue: " in line or "MAB Update: " in line or "MAB Poll: " in line or "MAB Sync " in line or "MAB NewTriage: " in line or "MAB CompleteTriage: " in line): # MAB Overhead
+        elif line[0] == '-' and ("MAB Dequeue: " in line or "MAB Update: " in line or "MAB Poll: " in line or "MAB Sync" in line or "MAB NewTriage: " in line or "MAB CompleteTriage: " in line): # MAB Overhead
             TIME_THRESHOLD = cur_ts - prev_ts + 10.0 # Upper bound
             tmp = line.split(": ");
             try:
@@ -178,7 +178,7 @@ def plotMAB(tests=["RAMINDEX", "KCOV"]):
         mab_prob_tri = {}
         mab_prob_mg = {}
         for name in data[module]:
-            if not "Sched" in name:
+            if not "TS" in name:
                 continue
             # Probability
             mab_prob = {"Generate": [], "Mutate": [], "Triage": []}
