@@ -36,6 +36,8 @@ def sortKeys(keys):
         else:
             mid.append(k)
     mid.sort()
+    prefix.sort()
+    postfix.sort()
     return prefix+mid+postfix
 
 def __plotAx(ax, data, key, value, xlabel="", ylabel="", title="", xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
@@ -56,7 +58,7 @@ def __plotAx(ax, data, key, value, xlabel="", ylabel="", title="", xlogscale=Fal
     lines = []
     labels = []
     for test in sortKeys(data.keys()):
-        label = test.replace("KCOV", "").replace('_', ' ').strip()
+        label = test.replace("KCOV", "").replace('_', ' ').replace('dev-', '').strip()
         if len(data[test]) == 0:
             continue;
         x = [v[key] / xunit for v in data[test]];
@@ -102,6 +104,12 @@ def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
 xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
     fig = None
     ax = None
+    total_test_len = 0
+    for test in data.keys():
+        total_test_len += len(test)
+    bbox_to_anchor = False
+    if len(data.keys()) > 4 or total_test_len > 40:
+        bbox_to_anchor = True
     if small:
         fig = plt.figure(figsize=(4,4))
         ax = plt.subplot(111)
@@ -109,7 +117,11 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     else:
         fig = plt.figure(figsize=(8,5))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
+        # plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
+        if bbox_to_anchor:
+            plt.subplots_adjust(left=0.12, bottom=0.15, right=0.75, top=0.98, wspace=0, hspace=0)
+        else:
+            plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
 
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
@@ -126,7 +138,7 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     idx = 0;
     maxx = 0
     for test in sortKeys(data.keys()):
-        label = test.replace("KCOV", "").replace('_', ' ').strip()
+        label = test.replace("KCOV", "").replace('_', ' ').replace('dev-', '').strip()
         if len(data[test]) == 0:
             continue;
         x = [v[key] / xunit for v in data[test]];
@@ -145,7 +157,11 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
         ax.set_xticks([xstep*i for i in range(int(round(maxx / xstep))+1)])
     ax.grid();
     # ax.legend(bbox_to_anchor=(1.01, 1.0))
-    ax.legend(loc=0, fontsize=12)
+    # ax.legend(loc=0, fontsize=12)
+    if bbox_to_anchor:
+        ax.legend(bbox_to_anchor=(1.01, 1.0),fontsize=12)
+    else:
+        ax.legend(loc=0,fontsize=12)
     plt.savefig(outfile); 
     plt.savefig(outfile + '.pdf');
     plt.close('all');
