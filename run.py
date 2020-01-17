@@ -78,6 +78,8 @@ else:
     for m in tmp:
         if m in modules:
             modules_to_test.append(m)
+        elif m.lower() == "kernel":
+            modules_to_test.append("KERNEL")
 print(modules_to_test)            
 
 tests = []
