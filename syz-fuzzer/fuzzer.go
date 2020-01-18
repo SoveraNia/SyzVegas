@@ -155,7 +155,7 @@ func (fuzzer *Fuzzer) ResetConfig() {
 }
 
 func (fuzzer *Fuzzer) printFuzzerConfig(config FuzzerConfig) {
-	fmt.Printf("# Fuzzer Config:\n%+v\n", config)
+	fmt.Printf("# Fuzzer Config: %v\n%+v\n", fuzzer.feedback, config)
 	fmt.Printf("# MABEta = %v, MABGamma = %v\n", fuzzer.MABEta, fuzzer.MABGamma)
 }
 

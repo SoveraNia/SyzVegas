@@ -711,6 +711,10 @@ func (proc *Proc) execute(execOpts *ipc.ExecOpts, p *prog.Prog, flags ProgTypes,
 	}
 	ts_bgn := time.Now().UnixNano()
 	info, _time := proc.executeRaw(execOpts, p, stat)
+	if proc.fuzzer.feedback == "NOCOVER" {
+		proc.fuzzer.checkNewSignal(p, info) // Still want to update signal to reduce output
+		return info, ret
+	}
 	ret.time += _time
 	p.CorpusGLC.Cost = _time
 	calls, extra, gainRaw := proc.fuzzer.checkNewSignal(p, info)

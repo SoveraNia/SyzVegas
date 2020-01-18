@@ -441,9 +441,9 @@ func FuzzerCmd(fuzzer, executor, name, OS, arch, fwdAddr, sandbox string, procs,
 		verbosityArg = fmt.Sprintf(" -vv=%v", verbosity)
 	}
 	ret := fmt.Sprintf("%v -executor=%v -name=%v -arch=%v%v -manager=%v -sandbox=%v"+
-		" -procs=%v -cover=%v -debug=%v -test=%v%v%v",
+		" -procs=%v -cover=%v -debug=%v -test=%v%v%v -feedback=%v",
 		fuzzer, executor, name, arch, osArg, fwdAddr, sandbox,
-		procs, cover, debug, test, runtestArg, verbosityArg)
+		procs, cover, debug, test, runtestArg, verbosityArg, feedback)
 	for k, v := range fuzzer_config {
 		_v, ok := v.(float64)
 		if ok {
