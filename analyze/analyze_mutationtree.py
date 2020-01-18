@@ -3,11 +3,14 @@ import os
 import copy
 import traceback
 import simplejson as json
+import random
+import math
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import numpy as np
 import pygraphviz as PG
+# from igraph import Graph, EdgeSeq
 
 from plot import plot, plotBar, plotCDF, plotBar1, plotCDF2
 from utils import loadDataCached, getTestParams
@@ -21,6 +24,7 @@ class Node:
         self.size = 1
         self.children = []
         self.parent = None
+        self.id = None
     def computeLevel(self, level=-1, visited=None):
         if level >= 0:
             self.level = level
@@ -74,6 +78,9 @@ def buildMutationTrees(p_all, p_generated, p_corpus, p_triage):
             continue
         if p.sig in nodes_all_dedup:
             continue
+        # Ignore minimize nodes
+        if p.origin == "Minimize":
+            continue
         # Backtrack
         p_cur = p
         n_cur = Node(p)
@@ -83,6 +90,12 @@ def buildMutationTrees(p_all, p_generated, p_corpus, p_triage):
         root_reached = True
         while p_cur.parent is not None:
             p_parent = p_all[p_cur.parent]
+            dist = 1
+            while p_parent.origin == "Minimize" and p_parent.parent is not None: # Ignore minimize edges
+                p_parent = p_all[p_parent.parent]
+                dist += 1
+            #print(p_parent.sig, p_cur.sig, dist)
+            #exit()
             if p_parent.sig in nodes_all_dedup: # This check ensures there will be no cycles
                 n_parent = nodes_all_dedup[p_parent.sig]
                 n_cur.parent = n_parent
@@ -107,6 +120,114 @@ def buildMutationTrees(p_all, p_generated, p_corpus, p_triage):
         if len(n.children) > 0:
             __roots.append(n)
     return __roots, nodes_all_dedup
+
+def plotForest(trees, nodes, samplerate=0.00001, maxnodes=200, maxlevel=20, outfile="tree.png"):
+    #if maxnodes / len(nodes) < samplerate / 2:
+    #    samplerate = maxnodes * 2.0 / len(nodes)
+    AG = PG.AGraph(directed=True, strict=True)
+    AG.graph_attr.update(penwidth=3)
+    AG.node_attr.update(color='black', shape='circle', style='filled', fillcolor='red',penwidth=3)
+    AG.edge_attr.update(len='2.0',penwidth=3)
+    # Node sampling
+    nodes_sample = random.sample(nodes.keys(), math.ceil(len(nodes) * samplerate))
+    # Reconstruct sampled tree via back-tracking 
+    nodes_sample_dedup = {}
+    trees_sample = []
+    for nsig in nodes_sample:
+        if nsig in nodes_sample_dedup:
+            continue
+        n_cur = nodes[nsig]
+        n_new_cur = Node(nodes[nsig].program)
+        nodes_sample_dedup[nsig] = n_new_cur
+        n_parent = n_cur.parent
+        root_reached = True
+        while n_parent is not None:
+            n_parent_sig = n_parent.program.sig
+            if n_parent_sig in nodes_sample_dedup: # This check ensures there will be no cycles
+                n_new_parent = nodes_sample_dedup[n_parent_sig]
+                n_new_cur.parent = n_new_parent
+                n_new_parent.children.append(n_new_cur)
+                root_reached = False
+                break
+            else:
+                n_new_parent = Node(n_parent.program)
+                nodes_sample_dedup[n_parent_sig] = n_new_parent
+                n_new_cur.parent = n_new_parent
+                n_new_parent.children.append(n_new_cur)
+                n_new_cur = n_new_parent
+                n_cur = n_parent
+                n_parent = n_cur.parent
+        if root_reached and n_new_cur.program.origin == "Generate":
+            if len(n_new_cur.children) > 0: 
+                trees_sample.append(n_new_cur)
+    print(trees_sample, len(nodes_sample_dedup))
+    # Plot trees
+    queue = []
+    nid = 0
+    for root in trees_sample:
+        if len(root.children) == 0: # Ignore stray nodes
+            continue
+        root.level = 1
+        queue.append(root)
+        root.id = nid
+        nid += 1
+    while len(queue) > 0 and maxnodes > 0:
+        # print([x.id for x in queue])
+        node = queue.pop(0)
+        AG.add_node(node.id, label='')
+        maxnodes -= 1
+        # Child sampling
+        if node.level < maxlevel:
+          for c in node.children:
+            queue.append(c)
+            c.id = nid
+            c.level = node.level + 1
+            c.parent = node
+            nid += 1
+        # Edge to parent
+        if node.parent is not None:
+            parent_id = node.parent.id
+            if parent_id is None:
+                print("WTF")
+            AG.add_edge(parent_id, node.id)
+            print(parent_id, node.id)
+
+    '''
+    n_trees = math.ceil(len(trees) * samplerate)
+    print(n_trees)
+    trees_subset = sortSample(trees, n_trees)
+    print(trees_subset)
+    # Construct tree in BFS fashion
+    queue = []
+    nid = 0
+    for root in trees_subset:
+        queue.append(root)
+        root.id = nid
+        nid += 1
+    while len(queue) > 0 and maxnodes > 0:
+        node = queue.pop(0)
+        AG.add_node(nid)
+        maxnodes -= 1
+        # Child sampling
+        n_childs = math.ceil(len(node.children) * samplerate)
+        children_subset = sortSample(node.children, n_childs)
+        # Add children to queue
+        for c in children_subset:
+            queue.append(c)
+            c.id = nid
+            nid += 1
+        # Edge to parent
+        if node.parent is not None:
+            parent_id = node.parent.id
+            if parent_id is None:
+                print("WTF")
+            AG.add_edge(parent_id, node.id)
+            print(parent_id, node.id)
+    '''
+    # Draw tree
+    AG.layout(prog='dot')
+    AG.draw(outfile, format='png', prog='dot')
+    AG.draw(outfile + ".pdf", format='pdf', prog='dot')
 
 def plotMutationTree(tests):
     datas = {}
@@ -139,6 +260,7 @@ def plotMutationTree(tests):
             continue;
         trees, nodes = buildMutationTrees(p_all, p_generated, p_corpus, p_triage)
         print(len(trees), len(nodes))
+        plotForest(trees, nodes, outfile="mt_sample_%s.png" % test)
         datas[name]["Num_Trees"].append(len(trees))
         num_lf = 0
         for r in trees:
