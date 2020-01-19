@@ -141,14 +141,14 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600)
             print(name, tmp[name][-1])
-            cov_median[module + '_' + name] = tmp[name]
+            cov_median[module.replace('dev-', '').capitalize() + '_' + name] = tmp[name]
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_%s_time.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
         print("Mean")
         tmp = {}
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Total_Coverage", bin_size=600, median=False)
             print(name, tmp[name][-1])
-            cov_mean[module + '_' + name] = tmp[name]
+            cov_mean[module.replace('dev-', '').capitalize() + '_' + name] = tmp[name]
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
         #tmp = {}
         #for name in data:

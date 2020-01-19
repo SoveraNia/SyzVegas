@@ -539,7 +539,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         datas_seedpower_sum_avg[name]["All"].append((data_seedpower_sum["Generate"] + data_seedpower_sum["Mutate"] + data_seedpower_sum["Minimize"]) / len(data_seedpower["All"]) if len(data_seedpower["All"]) > 0 else 0.0) 
     tmp = {}
     for name in datas_seedpower:
-        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-25, 825), small=True);
+        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-10, 210), small=True);
         plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True, small=True);
         plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False, small=True);
         tmp[name] = datas_seedpower[name]["All"]
