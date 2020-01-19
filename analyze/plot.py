@@ -5,7 +5,7 @@ from matplotlib.figure import SubplotParams
 import numpy as np
 
 linecolors = ["r", "g", "b", "black"]
-markers = ['s', 'o', '^', 'v', '+', 'x', 'd']
+markers = ['s', 'o', '^', 'v', 'd', '+', 'x', '2']
 fillcolors = ["tab:red", "tab:olive", "tab:blue", "tab:cyan"]
 patterns = ['--', 'xx', '++', '\\\\', '**', '..']
 linestyles = ["-",
@@ -101,27 +101,28 @@ xlogscale=[False,False], ylogscale=[False,False], xmax=[None,None], ymax=[None,N
 
 
 def plot(data, key, value, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False):
+xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0, yunit=1.0, nmarkers=12, xstep=None, small=False, legendout=True):
     fig = None
     ax = None
     total_test_len = 0
     for test in data.keys():
         total_test_len += len(test)
     bbox_to_anchor = False
-    if len(data.keys()) > 4 or total_test_len > 40:
+    if legendout:
+      if len(data.keys()) > 6 or total_test_len > 200:
         bbox_to_anchor = True
     if small:
         fig = plt.figure(figsize=(4,4))
         ax = plt.subplot(111)
         plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
     else:
-        fig = plt.figure(figsize=(8,5))
+        fig = plt.figure(figsize=(6,5))
         ax = plt.subplot(111)
         # plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
         if bbox_to_anchor:
-            plt.subplots_adjust(left=0.12, bottom=0.15, right=0.75, top=0.98, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.65, top=0.98, wspace=0, hspace=0)
         else:
-            plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
 
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
@@ -166,36 +167,15 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     plt.savefig(outfile + '.pdf');
     plt.close('all');
 
-def plotBar1(data, width=1, xlabel="", ylabel="", title="", outfile="out.png",
-xlogscale=False, ylogscale=False, xmax=None, ymax=None, small=False):
-    fig = None
-    ax = None
-    total_test_len = 0
-    for test in data.keys():
-        total_test_len += len(test)
-    bbox_to_anchor = False
-    if len(data.keys()) > 4 or total_test_len > 40:
-        bbox_to_anchor = True
-    if small:
-        fig = plt.figure(figsize=(4,4))
-        ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
-    else:
-        fig = plt.figure(figsize=(8,5))
-        ax = plt.subplot(111)
-        if bbox_to_anchor:
-            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.8, top=0.98, wspace=0, hspace=0)
-        else:
-            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
+def plotBarAx(ax, data, width=1, xlabel="", ylabel="", title="",
+xlogscale=False, ylogscale=False, yrange=None, small=False, yunit=1.0):
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
     ax.tick_params(labelsize=12);
 
-    if not xmax is None:
-        ax.set_xlim(0,xmax);
-    if not ymax is None:
-        ax.set_ylim(0,ymax);
+    if not yrange is None:
+        ax.set_ylim(yrange[0],yrange[1]);
     if xlogscale:
         ax.set_xscale('symlog')
     if ylogscale:
@@ -213,14 +193,58 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, small=False):
         y_std = []
         for key in labels:
             x.append(len(x) * width + (idx+0.5)*bar_width);
-            y_mean.append(np.mean(data[test][key]))
-            y_std.append(np.std(data[test][key]))
+            y_mean.append(np.mean(data[test][key]) / yunit)
+            y_std.append(np.std(data[test][key]) / yunit)
         tlabel = test.replace("KCOV", "").replace('_', ' ').strip()
         ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=tlabel, color=fillcolors[idx%len(fillcolors)], edgecolor='black', hatch=patterns[idx % len(patterns)]);
         idx += 1;
     ax.grid();
     ax.set_xticks([(width * i + len(data.keys()) * bar_width / 2) for i in range(len(labels))])
     ax.set_xticklabels(labels)
+
+def plotBar2(data, xlabel=["",""], ylabel=["",""], title=["",""], outfile="out.png",
+xlogscale=[False,False], ylogscale=[False,False], xmax=[None,None], ymax=[None,None], yunit=[1.0,1.0]):
+    ax = [None, None]
+    fig = plt.figure(figsize=(8,5))
+    # fig, (ax[0], ax[1]) = plt.subplots(1, 2, figsize=(8,5), subplotpars=SubplotParams(top=0.98,bottom=0.2,right=0.95,left=0.2,hspace=0.2,wspace=0))
+    lines = []
+    labels = []
+    for i in range(2):
+        ax[i] = plt.subplot(1,2,i+1)
+        lines, labels = __plotAx(ax[i], data[i], key[i], value[i], xlabel=xlabel[i], ylabel=ylabel[i], title=title[i], xlogscale=xlogscale[i], ylogscale=ylogscale[i], xmax=xmax[i], ymax=ymax[i], scatter=scatter[i], xunit=xunit[i], yunit=yunit[i], nmarkers=nmarkers[i], xstep=xstep[i], small=True)
+    fig.subplots_adjust(bottom=0.25,top=0.98,left=0.12,right=0.99,wspace=0.35)
+    #fig.tight_layout(pad=3.0)
+    fig.legend(lines, labels=labels, fontsize=12, loc=8, ncol=len(lines))
+    plt.savefig(outfile);
+    plt.savefig(outfile + '.pdf');
+    plt.close('all');
+
+
+def plotBar1(data, width=1, xlabel="", ylabel="", title="", outfile="out.png",
+xlogscale=False, ylogscale=False, yrange=None, small=False, yunit=1.0):
+    fig = None
+    ax = None
+    total_test_len = 0
+    for test in data.keys():
+        total_test_len += len(test)
+    bbox_to_anchor = False
+    if len(data.keys()) > 4 or total_test_len > 60:
+        bbox_to_anchor = True
+    if small:
+        fig = plt.figure(figsize=(4,4))
+        ax = plt.subplot(111)
+        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+    else:
+        fig = plt.figure(figsize=(6,5))
+        ax = plt.subplot(111)
+        if bbox_to_anchor:
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
+        else:
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
+
+    plotBarAx(ax, data, width=width, xlabel=xlabel, ylabel=ylabel, title=title,
+xlogscale=xlogscale, ylogscale=ylogscale, yrange=yrange, small=small, yunit=yunit)
+
     if bbox_to_anchor:
         ax.legend(bbox_to_anchor=(1.01, 1.0),fontsize=12)
     else:
@@ -330,7 +354,7 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
         ax = plt.subplot(111)
         plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
     else:
-        fig = plt.figure(figsize=(8,5))
+        fig = plt.figure(figsize=(6,5))
         ax = plt.subplot(111)
         plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
     ax.set_title(title, fontsize=20);

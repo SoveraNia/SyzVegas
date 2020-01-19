@@ -63,7 +63,9 @@ def getTestParams(test_name):
     name = "_".join(name)
     return name, module, run
 
-def averageData(data, key=0, value=1, bin_size=100, median=True, bin_avg=False):
+def averageData(data, key=0, value=1, bin_size=100, percentile=50, median=False, bin_avg=False):
+    if median:
+        percentile = 50
     ret = []
     num = len(data)
     cur_x = 0
@@ -92,17 +94,17 @@ def averageData(data, key=0, value=1, bin_size=100, median=True, bin_avg=False):
              #        y.append(tmp)
              #    else:
              if bin_avg and len(b_avg) > 0:
-                 y.append(np.median(b_avg))
+                 y.append(np.mean(b_avg))
              else:
                  y.append(data[i][_idx][value])
         if width < 0:
             width = len(y)
         if len(y) == 0 or len(y) < width:
             break;
-        if not median:
+        if percentile == False or percentile < 0:
             ret.append((cur_x, np.average(y)))
         else:
-            ret.append((cur_x, np.median(y)))
+            ret.append((cur_x, np.percentile(y, percentile)))
         cur_x += bin_size
         if end == width:
             break

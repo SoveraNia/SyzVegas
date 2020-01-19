@@ -227,7 +227,7 @@ def sampleTree(trees, nodes, samplerate=0.05, maxlevel=100):
     print(trees_sample, len(nodes_sample_dedup))
     return trees_sample, nodes_sample_dedup
 
-def plotForest(trees, nodes, samplerate=1.0, prunerate=0.0, maxnodes=500, maxtrees=100000, maxlevel=50, outfile="tree.png"):
+def plotForest(trees, nodes, samplerate=1.0, prunerate=0.0, maxnodes=500, maxtrees=100000, maxlevel=5000, outfile="tree.png"):
     #if maxnodes / len(nodes) < samplerate / 2:
     samplerate = maxnodes * 2.0 / len(nodes)
     AG = PG.AGraph(directed=True, strict=True)

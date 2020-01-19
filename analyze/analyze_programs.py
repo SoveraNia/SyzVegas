@@ -10,7 +10,7 @@ import numpy as np
 import pygraphviz as PG
 
 from plot import plot, plotBar, plotCDF, plotBar1, plot2
-from utils import loadDataCached, getTestParams
+from utils import loadDataCached, getTestParams, averageData
 
 class Program:
     def __init__(self, sig):
@@ -329,6 +329,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
     datas_mutlp = {}
     datas_mutep = {}
     datas_mutls = {}
+    datas_jobpower = {}
     for test in tests:
         name, module, run = getTestParams(test)
         # name = name + '_' + module
@@ -367,6 +368,11 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
                 "Mutate": [],
                 "Minimize": [],
             }
+            datas_jobpower[name] = {
+                "Generate": [],
+                "Mutate": [],
+                "Triage": [],
+            }
             datas_mutls[name] = {
                 "Total_Mutations": [],
                 "Last_Eff_Mutation": [],
@@ -403,6 +409,9 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
             "Minimization": [(v["Time_Elapsed"], v["Minimize_Coverage"]) for v in __data],
             "Mutation": [(v["Time_Elapsed"], v["Mutate_Coverage"]) for v in __data],
         }
+        datas_jobpower[name]["Generate"].append(datas[test]["Generation"])
+        datas_jobpower[name]["Triage"].append(datas[test]["Minimization"])
+        datas_jobpower[name]["Mutate"].append(datas[test]["Mutation"])
         datas[test+"_average"] = {
             "Generation": [(v["Time_Elapsed"], v["Generate_Coverage"] / v["Generate_Count"] if v["Generate_Count"] > 0 else 0) for v in __data],
             "Minimization": [(v["Time_Elapsed"], v["Minimize_Coverage"] / v["Minimize_Count"] if v["Minimize_Count"] > 0 else 0) for v in __data],
@@ -539,9 +548,9 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         datas_seedpower_sum_avg[name]["All"].append((data_seedpower_sum["Generate"] + data_seedpower_sum["Mutate"] + data_seedpower_sum["Minimize"]) / len(data_seedpower["All"]) if len(data_seedpower["All"]) > 0 else 0.0) 
     tmp = {}
     for name in datas_seedpower:
-        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-10, 210), small=True);
-        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True, small=True);
-        plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False, small=True);
+        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-10, 210), small=False);
+        plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True, small=False);
+        plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False, small=False);
         tmp[name] = datas_seedpower[name]["All"]
     plotCDF(tmp, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_all.png", xrange=(-0.5, 1005), xlogscale=True);
     # Seed power sum
@@ -551,11 +560,16 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
     plotBar1(datas_seednum, ylabel="# seeds", outfile="seed_num.png")
     plotBar1(datas_seedpower_sum, ylabel="Coverage", outfile="seed_power_sum.png")
     plotBar1(datas_seedpower_sum_avg, ylabel="Coverage", outfile="seed_power_sum_avg.png")
-    plotBar1(datas_jobpower_sum, ylabel="Coverage", outfile="work_power_sum.png")
+    plotBar1(datas_jobpower_sum, ylabel="Coverage (1000 edges)", outfile="work_power_sum.png", yunit=1000.0)
 
     plotCDF(datas_mutlp,  xlabel="Percentage", ylabel="CDF", title="", outfile="mutations_lifespan_percentage.png", xrange=(-0.05, 1.05));
     plotCDF(datas_mutep,  xlabel="Percentage", ylabel="CDF", title="", outfile="mutations_eff_percentage.png", xrange=(-0.05, 1.05));
 
     plotCDF(datas_pgsize, xlabel="Program Size", ylabel="CDF", title="", outfile="programs_size.png");
     plotCDF(datas_cpsize, xlabel="Corpus Size", ylabel="CDF", title="", outfile="corpus_size.png");
+
+    for name in datas_jobpower:
+        for task in ["Generate", "Mutate", "Triage"]:
+            datas_jobpower[name][task] = averageData(datas_jobpower[name][task], key=0, value=1, bin_size=600)
+        plot(datas_jobpower[name], 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="work_power_growth_%s.png" % name, xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
 

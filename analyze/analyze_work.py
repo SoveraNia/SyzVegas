@@ -159,13 +159,16 @@ def __plotWork(test):
     #plot(data, 0, 2, xlabel="# of executions", ylabel="# of executions", title="", outfile="work_%s.png" % test, ylogscale=False);
     plot(data, 1, 2, xlabel="Time elapsed (hr)", ylabel="# of executions", title="", outfile="work_time_%s.png" % test, ylogscale=False, xunit=3600.0);
 
-def __plotWorkDist(data, key, module="", ylogscale=False, ylabel=""):
+def __plotWorkDist(data, key, module="", ylogscale=False, ylabel="", yrange=None):
     # Programs Executed
     tmp = {}
     for name in data:
+      __tmp = {}
       for job in ["Generate", "Mutate", "Triage"]:
-        tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value=key + "_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=ylabel, outfile="work_%s_%s.png" % (module, key), ylogscale=ylogscale, xunit=3600.0);
+        __tmp[job] = averageData(data[name], key="Time_Elapsed", value=key + "_" + job, bin_size=600)
+        tmp[name + "_" + job] = __tmp[job]
+      plot(__tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=ylabel, outfile="work_%s_%s_%s.png" % (module, key, name), ylogscale=ylogscale, xunit=3600.0, nmarkers=13, xstep=4);
+    plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel=ylabel, outfile="work_%s_%s.png" % (module, key), ylogscale=ylogscale, xunit=3600.0, nmarkers=13, xstep=4);
     tmp = {}
     for name in data:
       tmp[name] = {}
@@ -173,7 +176,7 @@ def __plotWorkDist(data, key, module="", ylogscale=False, ylabel=""):
         tmp[name][job] = []
         for d in data[name]:
           tmp[name][job].append(d[-1][key + "_" + job])
-    plotBar1(tmp, ylabel=ylabel, outfile="work_%s_%s_bar.png" % (module, key), ylogscale=ylogscale);
+    plotBar1(tmp, ylabel=ylabel, outfile="work_%s_%s_bar.png" % (module, key), ylogscale=ylogscale, yrange=yrange);
 
 
 def plotWork(tests=["KCOV", "RAMINDEX"]):
@@ -217,7 +220,7 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
                  #tmp["99 Percentile"][__keys[i]] = np.percentile(exec_time[i], 99)
                  tmp["Q3+IQR"][__keys[i]] = 2 * np.percentile(exec_time[i], 75) + np.percentile(exec_time[i], 25)
             print(tmp)
-            plotBar1(tmp, ylabel="Time (s)", outfile="work_time_percentile_%s.png" % test)
+            # plotBar1(tmp, ylabel="Time (s)", outfile="work_time_percentile_%s.png" % test)
           except:
             traceback.print_exc()
             continue
@@ -228,31 +231,31 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
         tmp = {}
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
-            tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Total_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
+            tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Total_Time_" + job, bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total.png" % module, ylogscale=False, xunit=3600.0, nmarkers=13, xstep=4);
         tmp = {}
         for name in data:
-            tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Total_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
+            tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Total_Time_All", bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_total_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=13, xstep=4);
         # Execute Time
         tmp = {}
         for name in data:
           for job in ["Generate", "Mutate", "Triage"]:
-            tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_" + job, bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
+            tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_" + job, bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute.png" % module, ylogscale=False, xunit=3600.0, nmarkers=13, xstep=4);
         tmp = {}
         for name in data:
-            tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_All", bin_size=10)
-        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=12);
+            tmp[name + "_All"] = averageData(data[name], key="Time_Elapsed", value="Execute_Time_All", bin_size=600)
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Time (s)", outfile="work_%s_time_execute_all.png" % module, ylogscale=False, xunit=3600.0, nmarkers=13, xstep=4);
         # Overall Choices
         __plotWorkDist(data, module=module, key="Works_Done", ylabel="Choice", ylogscale=True)
         # Syscalls made
         #tmp = {}
         #for name in data:
         #  for job in ["Generate", "Mutate", "Triage"]:
-        #    tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Syscalls_Made_" + job, bin_size=10)
+        #    tmp[name + "_" + job] = averageData(data[name], key="Time_Elapsed", value="Syscalls_Made_" + job, bin_size=600)
         #plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Syscalls", outfile="work_%s_syscalls.png" % module, ylogscale=False);
         # Programs Executed
-        __plotWorkDist(data, module=module, key="Programs_Executed", ylabel="Programs", ylogscale=True)
+        __plotWorkDist(data, module=module, key="Programs_Executed", ylabel="Programs", ylogscale=True, yrange=(1000,10000000))
 
 
