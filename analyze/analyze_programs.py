@@ -366,7 +366,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
             datas_jobpower_sum[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
             }
             datas_jobpower[name] = {
                 "Generate": [],
@@ -402,7 +402,7 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         print(__data[-1])
         datas_jobpower_sum[name]["Generate"].append(__data[-1]["Generate_Coverage"])
         datas_jobpower_sum[name]["Mutate"].append(__data[-1]["Mutate_Coverage"])
-        datas_jobpower_sum[name]["Minimize"].append(__data[-1]["Minimize_Coverage"])
+        datas_jobpower_sum[name]["Triage"].append(__data[-1]["Minimize_Coverage"])
         # Accumulated
         datas[test] = {
             "Generation": [(v["Time_Elapsed"], v["Generate_Coverage"]) for v in __data],

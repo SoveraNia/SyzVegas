@@ -168,7 +168,7 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Corpus_Coverage", bin_size=600)
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Corpus Signal", title="Coverage", outfile="corpusSig_%s_time.png" % module, xunit=3600.0, nmarkers=13, xstep=4);
-    plot(cov_median, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
-    plot(cov_mean, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time_mean.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
+    plot(cov_median, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=1);
+    plot(cov_mean, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time_mean.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=1);
     # plot(data, 1, 3, xlabel="Time elapsed (min)", ylabel="Coverage", title="Hashed Coverage", outfile="coverage_hashed.png");
 
