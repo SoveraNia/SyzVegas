@@ -9,14 +9,13 @@ markers = ['s', 'o', '^', 'v', 'd', '+', 'x', '2']
 fillcolors = ["tab:red", "tab:olive", "tab:blue", "tab:cyan"]
 patterns = ['--', 'xx', '++', '\\\\', '**', '..']
 linestyles = ["-",
-     (0, (1, 3)),
+     (0, (3, 2, 1, 2)),
      (0, (5, 5)),
      (0, (3, 5, 1, 5)),
      (0, (3, 5, 1, 5, 1, 5)),
 
      (0, (1, 1)),
      (0, (5, 8)),
-     (0, (3, 1, 1, 1)),
      (0, (3, 10, 1, 10, 1, 10)),
      
      (0, (5, 1)),
@@ -114,9 +113,9 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     if small:
         fig = plt.figure(figsize=(4,4))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+        plt.subplots_adjust(left=0.16, bottom=0.16, right=0.98, top=0.98, wspace=0, hspace=0)
     else:
-        fig = plt.figure(figsize=(6,5))
+        fig = plt.figure(figsize=(6,4))
         ax = plt.subplot(111)
         # plt.subplots_adjust(left=0.12, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
         if bbox_to_anchor:
@@ -159,10 +158,13 @@ xlogscale=False, ylogscale=False, xmax=None, ymax=None, scatter=False, xunit=1.0
     ax.grid();
     # ax.legend(bbox_to_anchor=(1.01, 1.0))
     # ax.legend(loc=0, fontsize=12)
+    ncol=1
+    if len(data) > 6:
+        ncol=2
     if bbox_to_anchor:
         ax.legend(bbox_to_anchor=(1.01, 1.0),fontsize=12)
     else:
-        ax.legend(loc=0,fontsize=12)
+        ax.legend(loc=0,fontsize=12, ncol=ncol)
     plt.savefig(outfile); 
     plt.savefig(outfile + '.pdf');
     plt.close('all');
@@ -188,6 +190,7 @@ xlogscale=False, ylogscale=False, yrange=None, small=False, yunit=1.0):
             continue;
         if labels is None:
             labels = sorted(data[test].keys())
+            print(labels)
         x = []
         y_mean = []
         y_std = []
@@ -196,6 +199,7 @@ xlogscale=False, ylogscale=False, yrange=None, small=False, yunit=1.0):
             y_mean.append(np.mean(data[test][key]) / yunit)
             y_std.append(np.std(data[test][key]) / yunit)
         tlabel = test.replace("KCOV", "").replace('_', ' ').strip()
+        print(test, tlabel, y_mean, y_std)
         ax.bar(x,y_mean, yerr=y_std, width=bar_width, label=tlabel, color=fillcolors[idx%len(fillcolors)], edgecolor='black', hatch=patterns[idx % len(patterns)]);
         idx += 1;
     ax.grid();
@@ -233,14 +237,14 @@ xlogscale=False, ylogscale=False, yrange=None, small=False, yunit=1.0):
     if small:
         fig = plt.figure(figsize=(4,4))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.97, wspace=0, hspace=0)
     else:
-        fig = plt.figure(figsize=(6,5))
+        fig = plt.figure(figsize=(6,4))
         ax = plt.subplot(111)
         if bbox_to_anchor:
-            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.97, wspace=0, hspace=0)
         else:
-            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.98, wspace=0, hspace=0)
+            plt.subplots_adjust(left=0.12, bottom=0.08, right=0.95, top=0.97, wspace=0, hspace=0)
 
     plotBarAx(ax, data, width=width, xlabel=xlabel, ylabel=ylabel, title=title,
 xlogscale=xlogscale, ylogscale=ylogscale, yrange=yrange, small=small, yunit=yunit)
@@ -352,11 +356,12 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
     if small:
         fig = plt.figure(figsize=(4,4))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+        # plt.subplots_adjust(left=0.2, bottom=0.2, right=0.95, top=0.98, wspace=0, hspace=0)
+        plt.subplots_adjust(left=0.16, bottom=0.16, right=0.98, top=0.98, wspace=0, hspace=0)
     else:
-        fig = plt.figure(figsize=(6,5))
+        fig = plt.figure(figsize=(6,4))
         ax = plt.subplot(111)
-        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.95, wspace=0, hspace=0)
+        plt.subplots_adjust(left=0.15, bottom=0.15, right=0.95, top=0.98, wspace=0, hspace=0)
     ax.set_title(title, fontsize=20);
     ax.set_xlabel(xlabel, fontsize=16);
     ax.set_ylabel(ylabel, fontsize=16);
@@ -368,6 +373,9 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
     if xlogscale:
         ax.set_xscale('symlog')
     idx = 0;
+    ncolors = len(linecolors)
+    if len(data) % 3 == 0:
+        ncolors = 3
     for test in sortKeys(data.keys()):
         if value is not None and key is not None:
             x = [v[value] for v in data[test][key]];
@@ -389,7 +397,7 @@ def plotCDF(data, key=None, value=None, xlabel="", ylabel="CDF", title="", outfi
         markevery = int((len(x)-1) / (nmarkers-1)) if nmarkers > 1 else None
         if markevery == 0:
             markevery = 1
-        ax.plot(x,y, label=label, color=linecolors[idx%len(linecolors)], linestyle=linestyles[int(idx/len(linecolors))], marker=marker, markersize=8, markevery=markevery);
+        ax.plot(x,y, label=label, color=linecolors[idx%ncolors], linestyle=linestyles[int(idx/ncolors)], marker=marker, markersize=8, markevery=markevery);
         idx += 1;
     ax.legend(loc=0, fontsize=12)
     ax.grid();

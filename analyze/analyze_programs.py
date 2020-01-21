@@ -337,30 +337,30 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
             datas_seednum[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
                 "All": [],
             }
             datas_seedpower[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
                 "All": [],
             }
             datas_seedpower_avg[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
                 "All": [],
             }
             datas_seedpower_sum[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
             }
             datas_seedpower_sum_avg[name] = {
                 "Generate": [],
                 "Mutate": [],
-                "Minimize": [],
+                "Triage": [],
                 "All": [],
             }
             datas_jobpower_sum[name] = {
@@ -496,24 +496,24 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         data_seedpower = {
             "Generate": [],
             "Mutate": [],
-            "Minimize": [],
+            "Triage": [],
             "All": [],
         }
         data_seedpower_avg = {
             "Generate": [],
             "Mutate": [],
-            "Minimize": [],
+            "Triage": [],
             "All": [],
         }
         data_seedpower_sum = {
             "Generate": 0,
             "Mutate": 0,
-            "Minimize": 0
+            "Triage": 0
         }
         data_seednum = {
             "Generate": 0,
             "Mutate": 0,
-            "Minimize": 0,
+            "Triage": 0,
             "All": 0
         }
         for psig in p_corpus:
@@ -521,6 +521,8 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
             #if p.inCorpus:
             cov = 0
             origin = p.corpusSource
+            if origin == "Minimize":
+                origin = "Triage"
             if origin is None:
                 print("WTF")
                 print(psig)
@@ -539,25 +541,32 @@ def plotPrograms(tests=["KCOV", "RAMINDEX"]):
         # print(data_seedpower_avg)
         for job in data_seednum:
             datas_seednum[name][job].append(data_seednum[job])
-        for job in data_seedpower:
+        for job in datas_seedpower[name]:
             datas_seedpower[name][job] += data_seedpower[job]
             datas_seedpower_avg[name][job] += data_seedpower_avg[job]
         for job in data_seedpower_sum:
             datas_seedpower_sum[name][job].append(data_seedpower_sum[job])
             datas_seedpower_sum_avg[name][job].append(data_seedpower_sum[job] / len(data_seedpower[job]) if len(data_seedpower[job]) > 0 else 0.0)
-        datas_seedpower_sum_avg[name]["All"].append((data_seedpower_sum["Generate"] + data_seedpower_sum["Mutate"] + data_seedpower_sum["Minimize"]) / len(data_seedpower["All"]) if len(data_seedpower["All"]) > 0 else 0.0) 
+        datas_seedpower_sum_avg[name]["All"].append((data_seedpower_sum["Generate"] + data_seedpower_sum["Mutate"] + data_seedpower_sum["Triage"]) / len(data_seedpower["All"]) if len(data_seedpower["All"]) > 0 else 0.0) 
     tmp = {}
+    tmp_break = {}
     for name in datas_seedpower:
-        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-10, 210), small=False);
+        plotCDF(datas_mutls[name],  xlabel="# Mutations", ylabel="CDF", title="", outfile="mutations_lifespan_%s.png" % name, xrange=(-10, 210), small=True);
         plotCDF(datas_seedpower[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_%s.png" % name, xrange=(-0.5, 1005), xlogscale=True, small=False);
         plotCDF(datas_seedpower_avg[name], xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_avg_%s.png" % name, xrange=(-0.5,10), xlogscale=False, small=False);
         tmp[name] = datas_seedpower[name]["All"]
+        if "SS" in name:
+          for job in ["Generate", "Mutate", "Triage"]:
+            tmp_break[name + "_" + job] = datas_seedpower[name][job]
     plotCDF(tmp, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_all.png", xrange=(-0.5, 1005), xlogscale=True);
+    plotCDF(tmp_break, xlabel="Coverage", ylabel="CDF", title="", outfile="seed_power_breakdown.png", xrange=(-0.5, 1005), xlogscale=True);
+    plotCDF(tmp_break, xlabel="Coverage", ylabel="# of seeds", title="", outfile="seed_power_breakdown_raw.png", xrange=(-0.5, 1005), xlogscale=True, raw=True);
     # Seed power sum
     #for name in datas_seedpower_sum:
     #    for job in datas_seedpower_sum[name]:
     #        datas_seedpower_sum[name][job] = np.median(datas_seedpower_sum[name][job])
     plotBar1(datas_seednum, ylabel="# seeds", outfile="seed_num.png")
+    print("Seed Numbers")
     plotBar1(datas_seedpower_sum, ylabel="Coverage", outfile="seed_power_sum.png")
     plotBar1(datas_seedpower_sum_avg, ylabel="Coverage", outfile="seed_power_sum_avg.png")
     plotBar1(datas_jobpower_sum, ylabel="Coverage (1000 edges)", outfile="work_power_sum.png", yunit=1000.0)

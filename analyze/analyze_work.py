@@ -4,6 +4,7 @@ import copy
 import traceback
 import simplejson as json
 import matplotlib.pyplot as plt
+from scipy.stats import percentileofscore
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import numpy as np
@@ -215,6 +216,7 @@ def plotWork(tests=["KCOV", "RAMINDEX"]):
             }
             __keys = ["Generate", "Mutate", "Triage", "All"]
             exec_time.append(exec_time[0] + exec_time[1] + exec_time[2])
+            print("Percentile: ", percentileofscore(exec_time[3], 1.0))
             for i in range(4):
                  tmp["Median"][__keys[i]] = np.percentile(exec_time[i], 50)
                  #tmp["99 Percentile"][__keys[i]] = np.percentile(exec_time[i], 99)

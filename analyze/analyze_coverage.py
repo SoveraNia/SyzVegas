@@ -37,6 +37,7 @@ def __processTestAltAlt(test):
         "Time_Elapsed": 0,
         "Syscall_Count": 0,
         "Program_Count": 0,
+        "Seed_Count": 0,
         "Corpus_Coverage": 0,
         "Total_Coverage": 0
     }
@@ -91,7 +92,8 @@ def __processTestAltAlt(test):
             except:
                 continue
             coverageCorpus.add(pc);
-        #elif "# addInputToCorpus" in line:
+        elif "# addInputToCorpus" in line:
+            cur_status["Seed_Count"] += 1;
         #    tmp = line.split(":")[1].split(".")[0].split(",")[1]
         #    corpusSig = int(tmp)
     f.close();
@@ -156,6 +158,14 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
             print(name, tmp[name][-1])
             cov_mean[module.replace('dev-', '').capitalize() + '_' + name] = tmp[name]
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_%s_time_mean.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
+        # Seed count
+        print("Seed count")
+        tmp = {}
+        for name in data:
+            tmp[name] = averageData(data[name], key="Time_Elapsed", value="Seed_Count", bin_size=600, median=False)
+            print(name, tmp[name][-1])
+            cov_mean[module.replace('dev-', '').capitalize() + '_' + name] = tmp[name]
+        plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Number of seeds (1000)", outfile="seed_%s_time.png" % module, xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
         #tmp = {}
         #for name in data:
         #    tmp[name] = averageData(data[name], key="Syscall_Count", value="Total_Coverage")
@@ -168,7 +178,8 @@ def plotCoverage(tests=["RAMINDEX", "KCOV"]):
         for name in data:
             tmp[name] = averageData(data[name], key="Time_Elapsed", value="Corpus_Coverage", bin_size=600)
         plot(tmp, 0, 1, xlabel="Time elapsed (hr)", ylabel="Corpus Signal", title="Coverage", outfile="corpusSig_%s_time.png" % module, xunit=3600.0, nmarkers=13, xstep=4);
-    plot(cov_median, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=1);
-    plot(cov_mean, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time_mean.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=1);
+    plot(cov_median, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
+    plot(cov_median, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time_small.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4, small=True);
+    plot(cov_mean, 0, 1, xlabel="Time elapsed (hr)", ylabel="Coverage (1000 edges)", outfile="coverage_all_time_mean.png", xunit=3600.0, yunit=1000.0, nmarkers=13, xstep=4);
     # plot(data, 1, 3, xlabel="Time elapsed (min)", ylabel="Coverage", title="Hashed Coverage", outfile="coverage_hashed.png");
 
